@@ -8,6 +8,7 @@ public class LevelManager : MonoBehaviour
     public Transform playerSpawnPoint;
     public Enemy[] enemiesPrefabs;
     public List<Enemy> spawnedEnemies;
+    public Player player;
     
     public void SpawnEnemies()
     {

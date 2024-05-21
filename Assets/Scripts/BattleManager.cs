@@ -24,6 +24,9 @@ public class BattleManager : MonoBehaviour, IGameStartListener
     {
         CreateLevel();
         isBattleStarted = true;
+        turn = Turn.ENEMY;
+        SwitchTurn();
+        Debug.Log("Battle_Started");
     }
     public void SwitchTurn()
     {
@@ -36,6 +39,7 @@ public class BattleManager : MonoBehaviour, IGameStartListener
         else
         {
             turn = Turn.PLAYER;
+            levelManager.player.StartTurn();
         }
     }
     private void CreateLevel()
