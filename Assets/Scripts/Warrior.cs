@@ -5,5 +5,5 @@ using UnityEngine;
 public interface IWarrior
 {
     void Attack(int multi);
-    void ReceiveDamage();
+    void ReceiveDamage(int minushp);
 }

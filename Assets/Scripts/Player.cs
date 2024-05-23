@@ -5,12 +5,12 @@ using UnityEngine;
 public class Player : MonoBehaviour, IWarrior
 {
     [SerializeField] private Animator animator;
-    private int damage;
-    private int hp;
+    private int damage=5;
+    private int hp=50;
     private int armor;
     private bool isCanMakeTurn;
 
-    private void FixedUpdate()
+    private void Update()
     {
         if (Input.GetKeyDown(KeyCode.Space) && isCanMakeTurn)
         {
@@ -19,13 +19,25 @@ public class Player : MonoBehaviour, IWarrior
     }
     public void Attack(int multi)
     {
-        Dice.instance.GetRoll();
         isCanMakeTurn = false;
-        Debug.Log("AttakaPlayer=" + multi);
+        BattleManager.onPlayerTurnMaked?.Invoke();
     }
-    public void ReceiveDamage()
+    public int GetDamage()
     {
-        throw new System.NotImplementedException();
+        return damage;
+    }
+    public void ReceiveDamage(int minushp)
+    {
+        hp -= minushp;
+        Debug.Log("Player HP last:" + hp);
+        if (hp <= 0)
+        {
+            Dead();
+        }
+    }
+    public int GetAttackParameters()
+    {
+        return damage;
     }
     public void Init(int damage, int hp, int armor)
     {
@@ -38,4 +50,8 @@ public class Player : MonoBehaviour, IWarrior
         Debug.Log("Player Turn");
         isCanMakeTurn = true;
     }
+    public void Dead()
+    {
+        Debug.Log("Player Dead");
+    }    
 }

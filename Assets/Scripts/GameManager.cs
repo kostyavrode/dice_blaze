@@ -1,7 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-
+using System;
 public enum GameState
 {
     OFF = 0,
@@ -12,6 +12,7 @@ public enum GameState
 public class GameManager : MonoBehaviour
 {
     public static GameManager instance;
+    public static Action onEndGame;
     public GameState State { get { return this.state; } }
 
     private GameState state;
@@ -19,6 +20,11 @@ public class GameManager : MonoBehaviour
     private void Awake()
     {
         AddListener(GetComponentInChildren<BattleManager>());
+        onEndGame += EndGame;
+    }
+    private void OnDisable()
+    {
+        onEndGame -= EndGame;
     }
     public void AddListener(IGameListener listener)
     {
@@ -38,10 +44,11 @@ public class GameManager : MonoBehaviour
                 break;
         }
         Debug.Log(state);
+        this.state = state;
     }
-    private void FixedUpdate()
+    private void Update()
     {
-        if (Input.GetKeyDown(KeyCode.K))
+        if (Input.GetKeyDown(KeyCode.K) && state!=GameState.PLAYING)
         {
             ChangeGameState(GameState.PLAYING);
             foreach (var listner in listeners)
@@ -52,6 +59,18 @@ public class GameManager : MonoBehaviour
                 }
             }
             ChangeGameState(GameState.PLAYING);
+            Debug.Log("Game Started");
+        }
+    }
+    private void EndGame()
+    {
+        ChangeGameState(GameState.FINISHED);
+        foreach (var listner in listeners)
+        {
+            if (listner is IGameFinishedListener startListener)
+            {
+                startListener.OnGameFinished();
+            }
         }
     }
 }
