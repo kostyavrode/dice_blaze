@@ -50,9 +50,20 @@ public class LevelManager : MonoBehaviour
         }
         catch
         {
-            GameManager.onEndGame?.Invoke();
+            //GameManager.onEndGame?.Invoke();
         }
-        BattleManager.onEnemyChanged?.Invoke(currentEnemy);
+        if (spawnedEnemies.Count==0)
+        {
+            BattleManager.onEnemyChanged?.Invoke(null);
+            GameManager.onEndGame?.Invoke();
+            
+        }
+        else
+        {
+            Debug.Log("SPAWNED ENE<IES: " + spawnedEnemies.Count);
+            BattleManager.onEnemyChanged?.Invoke(currentEnemy);
+
+        }
     }
     public Enemy GetCurrentEnemy()
     {

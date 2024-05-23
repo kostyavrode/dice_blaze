@@ -42,6 +42,6 @@ public class Enemy : MonoBehaviour, IWarrior
         //animator.SetTrigger("dead");
         Debug.Log("Enemy deaed");
         LevelManager.onEnemyDeath?.Invoke(this);
-        Destroy(this.gameObject);
+        gameObject.SetActive(false);
     }
 }

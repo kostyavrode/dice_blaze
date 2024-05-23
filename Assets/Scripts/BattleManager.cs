@@ -5,7 +5,7 @@ using System;
 public enum Turn
 {
     PLAYER = 0,
-    ENEMY = 1
+    ENEMY=1
 }
 
 public class BattleManager : MonoBehaviour, IGameStartListener, IGameFinishedListener
@@ -28,11 +28,12 @@ public class BattleManager : MonoBehaviour, IGameStartListener, IGameFinishedLis
         CreateLevel();
         isBattleStarted = true;
         turn = Turn.ENEMY;
-        SwitchTurn();
+        
         onPlayerTurnMaked += SwitchTurn;
         onEnemyChanged += ChangeEnemy;
         enemyInBattle = levelManager.currentEnemy;
         Debug.Log("Battle_Started");
+        SwitchTurn();
     }
     void IGameFinishedListener.OnGameFinished()
     {
@@ -41,18 +42,28 @@ public class BattleManager : MonoBehaviour, IGameStartListener, IGameFinishedLis
     }
     public void SwitchTurn()
     {
+        Debug.Log("SWITCH TURN");
         if (turn==Turn.PLAYER)
         {
-            turn = Turn.ENEMY;
+            Debug.Log("START PLAYER TURN");
+            levelManager.player.isCanMakeTurn = true;
             enemyInBattle.ReceiveDamage(levelManager.player.GetAttackParameters() * Dice.instance.GetRoll());
             CheckEnemy();
+            if (enemyInBattle)
+            {
+                turn = Turn.ENEMY;
+                Debug.Log("END PLAYER TURN");
+                SwitchTurn();
+            }
         }
         else
         {
+            Debug.Log("START ENEMY TURN");
+            
+            levelManager.player.ReceiveDamage(levelManager.currentEnemy.GetDamage() * Dice.instance.GetRoll());
+            Debug.Log("END ENEMY TURN");
             turn = Turn.PLAYER;
             levelManager.player.StartTurn();
-            levelManager.player.ReceiveDamage(levelManager.currentEnemy.GetDamage() * Dice.instance.GetRoll());
-            
         }
     }
     private void CreateLevel()

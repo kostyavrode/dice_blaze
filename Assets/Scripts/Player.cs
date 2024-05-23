@@ -8,7 +8,7 @@ public class Player : MonoBehaviour, IWarrior
     private int damage=5;
     private int hp=50;
     private int armor;
-    private bool isCanMakeTurn;
+    public bool isCanMakeTurn;
 
     private void Update()
     {
