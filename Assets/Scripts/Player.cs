@@ -48,6 +48,7 @@ public class Player : MonoBehaviour, IWarrior
     {
         hp -= minushp;
         Debug.Log("Player HP last:" + hp);
+        UIManager.instance.ChangeHP(hp);
         if (hp <= 0)
         {
             Dead();
@@ -71,7 +72,7 @@ public class Player : MonoBehaviour, IWarrior
     public void MoveTo(Vector3 destination)
     {
         animator.SetBool("run",true);
-        transform.DOMoveZ(destination.z-2, 3).OnComplete(StopRun);
+        transform.DOMove(destination, 3).OnComplete(StopRun);
     }
     public void StopRun()
     {
