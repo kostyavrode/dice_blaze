@@ -7,15 +7,26 @@ public enum Turn
     PLAYER = 0,
     ENEMY=1
 }
+public enum AttackType
+{
+    LEG=0,
+    SWORD=1
+}
 
 public class BattleManager : MonoBehaviour, IGameStartListener, IGameFinishedListener
 {
     public static Action onPlayerTurnMaked;
     public static Action<Enemy> onEnemyChanged;
+    public static Action onTurnSwitch;
     [SerializeField] private LevelManager levelManager;
     private Turn turn;
     private bool isBattleStarted;
     private Enemy enemyInBattle;
+    private bool isWaitingForGiveDamage;
+    public Turn Turn
+    {
+        get { return turn; }
+    }
     private void Awake()
     {
         if (!levelManager)
@@ -23,11 +34,44 @@ public class BattleManager : MonoBehaviour, IGameStartListener, IGameFinishedLis
             levelManager = GetComponent<LevelManager>();
         }
     }
+    private void Update()
+    {
+        if (isWaitingForGiveDamage)
+        {
+            if (IsAnimationPlaying("idle"))
+            {
+                if (turn == Turn.ENEMY)
+                {
+                    levelManager.player.ReceiveDamage(levelManager.currentEnemy.GetDamage() * Dice.instance.GetRoll());
+                    Debug.Log("END ENEMY TURN");
+                    turn = Turn.PLAYER;
+                    levelManager.player.StartTurn();
+                    isWaitingForGiveDamage = false;
+                    onTurnSwitch?.Invoke();
+                    SwitchTurn();
+                }
+                else
+                {
+                    enemyInBattle.ReceiveDamage(levelManager.player.GetAttackParameters() * Dice.instance.GetRoll());
+                    CheckEnemy();
+                    if (enemyInBattle)
+                    {
+                        turn = Turn.ENEMY;
+                        Debug.Log("END PLAYER TURN");
+                        SwitchTurn();
+                    }
+                    isWaitingForGiveDamage = false;
+                    onTurnSwitch?.Invoke();
+                    SwitchTurn();
+                }
+            }
+        }
+    }
     void IGameStartListener.OnGameStarted()
     {
         CreateLevel();
         isBattleStarted = true;
-        turn = Turn.ENEMY;
+        turn = Turn.PLAYER;
         
         onPlayerTurnMaked += SwitchTurn;
         onEnemyChanged += ChangeEnemy;
@@ -40,6 +84,31 @@ public class BattleManager : MonoBehaviour, IGameStartListener, IGameFinishedLis
         onPlayerTurnMaked -= SwitchTurn;
         onEnemyChanged -= ChangeEnemy;
     }
+    public void Attack(AttackType type=AttackType.SWORD)
+    {
+        if (turn==Turn.PLAYER)
+        {
+            switch (type)
+            {
+                case AttackType.LEG:
+                    {
+                        levelManager.player.LegAttack();
+                        break;
+                    }
+                case AttackType.SWORD:
+                    {
+                        levelManager.player.SwordAttack();
+                        break;
+                    }
+            }
+            StartCoroutine(Wait1Sec());
+        }
+        else
+        {
+            enemyInBattle.animator.SetTrigger("attack");
+            StartCoroutine(Wait1Sec());
+        }
+    }
     public void SwitchTurn()
     {
         Debug.Log("SWITCH TURN");
@@ -47,23 +116,23 @@ public class BattleManager : MonoBehaviour, IGameStartListener, IGameFinishedLis
         {
             Debug.Log("START PLAYER TURN");
             levelManager.player.isCanMakeTurn = true;
-            enemyInBattle.ReceiveDamage(levelManager.player.GetAttackParameters() * Dice.instance.GetRoll());
-            CheckEnemy();
-            if (enemyInBattle)
-            {
-                turn = Turn.ENEMY;
-                Debug.Log("END PLAYER TURN");
-                SwitchTurn();
-            }
+            //enemyInBattle.ReceiveDamage(levelManager.player.GetAttackParameters() * Dice.instance.GetRoll());
+            //CheckEnemy();
+            //if (enemyInBattle)
+            //{
+            //    turn = Turn.ENEMY;
+            //    Debug.Log("END PLAYER TURN");
+            //    SwitchTurn();
+            //}
         }
         else
         {
-            Debug.Log("START ENEMY TURN");
-            
-            levelManager.player.ReceiveDamage(levelManager.currentEnemy.GetDamage() * Dice.instance.GetRoll());
-            Debug.Log("END ENEMY TURN");
-            turn = Turn.PLAYER;
-            levelManager.player.StartTurn();
+            //Debug.Log("START ENEMY TURN");
+            Attack();
+            //levelManager.player.ReceiveDamage(levelManager.currentEnemy.GetDamage() * Dice.instance.GetRoll());
+            //Debug.Log("END ENEMY TURN");
+            //turn = Turn.PLAYER;
+            //levelManager.player.StartTurn();
         }
     }
     private void CreateLevel()
@@ -79,5 +148,32 @@ public class BattleManager : MonoBehaviour, IGameStartListener, IGameFinishedLis
         enemyInBattle = en;
         Debug.Log("Enemy changed");
     }
+    private bool IsAnimationPlaying(string animationName)
+    {
+        if (turn==Turn.ENEMY)
+        {
+            var animatorStateInfo = enemyInBattle.animator.GetCurrentAnimatorStateInfo(0);
+            if (animatorStateInfo.IsName(animationName))
+                return true;
 
+            return false;
+        }
+        else
+        {
+            var animatorStateInfo = levelManager.player.animator.GetCurrentAnimatorStateInfo(0);
+            if (animatorStateInfo.IsName(animationName))
+                return true;
+
+            return false;
+        }   
+    }
+    private void ChechDistanceBetweenEnemy()
+    {
+
+    }
+    private IEnumerator Wait1Sec()
+    {
+        yield return new WaitForSeconds(0.5f);
+        isWaitingForGiveDamage = true;
+    }
 }

@@ -19,7 +19,7 @@ public class GameManager : MonoBehaviour
     public List<IGameListener> listeners = new List<IGameListener>();
     private void Awake()
     {
-        //AddListener(GetComponentInChildren<BattleManager>());
+        instance = this;
         onEndGame += EndGame;
     }
     private void OnDisable()
@@ -47,18 +47,6 @@ public class GameManager : MonoBehaviour
     }
     private void Update()
     {
-        if (Input.GetKeyDown(KeyCode.K) && state!=GameState.PLAYING)
-        {
-            foreach (var listner in listeners)
-            {
-                if (listner is IGameStartListener startListener)
-                {
-                    startListener.OnGameStarted();
-                }
-            }
-            ChangeGameState(GameState.PLAYING);
-            Debug.Log("Game Started");
-        }
     }
     private void EndGame()
     {
@@ -71,5 +59,17 @@ public class GameManager : MonoBehaviour
             }
         }
         Debug.Log("Game Finished");
+    }
+    public void StartGame()
+    {
+        foreach (var listner in listeners)
+        {
+            if (listner is IGameStartListener startListener)
+            {
+                startListener.OnGameStarted();
+            }
+        }
+        ChangeGameState(GameState.PLAYING);
+        Debug.Log("Game Started");
     }
 }

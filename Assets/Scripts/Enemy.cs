@@ -4,7 +4,7 @@ using UnityEngine;
 
 public class Enemy : MonoBehaviour, IWarrior
 {
-    [SerializeField] private Animator animator;
+    public Animator animator;
     private int damage=1;
     private int hp=10;
     private int armor=1;
@@ -39,9 +39,15 @@ public class Enemy : MonoBehaviour, IWarrior
     }
     private void Death()
     {
-        //animator.SetTrigger("dead");
+        animator.SetTrigger("dead");
         Debug.Log("Enemy deaed");
         LevelManager.onEnemyDeath?.Invoke(this);
+        StartCoroutine(WaitToDestroyObject());
+    }
+    private IEnumerator WaitToDestroyObject()
+    {
+        yield return new WaitForSeconds(5);
         gameObject.SetActive(false);
+
     }
 }

@@ -4,7 +4,7 @@ using UnityEngine;
 
 public class Player : MonoBehaviour, IWarrior
 {
-    [SerializeField] private Animator animator;
+    public Animator animator;
     private int damage=5;
     private int hp=50;
     private int armor;
@@ -16,11 +16,27 @@ public class Player : MonoBehaviour, IWarrior
         {
             Attack(1);
         }
+        if (Input.GetKeyDown(KeyCode.Q))
+        {
+            LegAttack();
+        }
+        if (Input.GetKeyDown(KeyCode.W))
+        {
+            SwordAttack();
+        }
     }
     public void Attack(int multi)
     {
         isCanMakeTurn = false;
         BattleManager.onPlayerTurnMaked?.Invoke();
+    }
+    public void LegAttack()
+    {
+        animator.SetTrigger("leg");
+    }
+    public void SwordAttack()
+    {
+        animator.SetTrigger("sword");
     }
     public int GetDamage()
     {
