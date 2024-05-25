@@ -23,6 +23,7 @@ public class BattleManager : MonoBehaviour, IGameStartListener, IGameFinishedLis
     private bool isBattleStarted;
     private Enemy enemyInBattle;
     private bool isWaitingForGiveDamage;
+    private bool isEnemyChanged;
     public Turn Turn
     {
         get { return turn; }
@@ -33,6 +34,11 @@ public class BattleManager : MonoBehaviour, IGameStartListener, IGameFinishedLis
         {
             levelManager = GetComponent<LevelManager>();
         }
+        Player.onDestinationArrived += ContinueFight;
+    }
+    private void OnDisable()
+    {
+        Player.onDestinationArrived -= ContinueFight;
     }
     private void Update()
     {
@@ -54,15 +60,16 @@ public class BattleManager : MonoBehaviour, IGameStartListener, IGameFinishedLis
                 {
                     enemyInBattle.ReceiveDamage(levelManager.player.GetAttackParameters() * Dice.instance.GetRoll());
                     CheckEnemy();
-                    if (enemyInBattle)
+                    CheckDistanceBetweenEnemy();
+                    if (enemyInBattle && !isEnemyChanged)
                     {
                         turn = Turn.ENEMY;
                         Debug.Log("END PLAYER TURN");
                         SwitchTurn();
                     }
+                    
                     isWaitingForGiveDamage = false;
-                    onTurnSwitch?.Invoke();
-                    SwitchTurn();
+                    
                 }
             }
         }
@@ -147,6 +154,7 @@ public class BattleManager : MonoBehaviour, IGameStartListener, IGameFinishedLis
     {
         enemyInBattle = en;
         Debug.Log("Enemy changed");
+        isEnemyChanged = true;
     }
     private bool IsAnimationPlaying(string animationName)
     {
@@ -167,9 +175,20 @@ public class BattleManager : MonoBehaviour, IGameStartListener, IGameFinishedLis
             return false;
         }   
     }
-    private void ChechDistanceBetweenEnemy()
+    private void CheckDistanceBetweenEnemy()
     {
-
+        if (levelManager.currentEnemy.transform.position.z- levelManager.player.transform.position.z>3)
+        {
+            levelManager.player.MoveTo(levelManager.currentEnemy.transform.position);
+        }
+    }
+    private void ContinueFight()
+    {
+        isEnemyChanged = false;
+        turn = Turn.ENEMY;
+        onTurnSwitch?.Invoke();
+        SwitchTurn();
+        
     }
     private IEnumerator Wait1Sec()
     {

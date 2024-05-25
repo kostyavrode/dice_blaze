@@ -1,9 +1,11 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-
+using DG.Tweening;
+using System;
 public class Player : MonoBehaviour, IWarrior
 {
+    public static Action onDestinationArrived;
     public Animator animator;
     private int damage=5;
     private int hp=50;
@@ -66,6 +68,16 @@ public class Player : MonoBehaviour, IWarrior
         Debug.Log("Player Turn");
         isCanMakeTurn = true;
     }
+    public void MoveTo(Vector3 destination)
+    {
+        animator.SetBool("run",true);
+        transform.DOMoveZ(destination.z-2, 3).OnComplete(StopRun);
+    }
+    public void StopRun()
+    {
+        animator.SetBool("run", false);
+        onDestinationArrived?.Invoke();
+    }    
     public void Dead()
     {
         Debug.Log("Player Dead");
