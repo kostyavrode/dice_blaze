@@ -11,6 +11,7 @@ public class Player : MonoBehaviour, IWarrior
     private int hp=50;
     private int armor;
     public bool isCanMakeTurn;
+    private bool isFirstDestination;
 
     private void Update()
     {
@@ -72,12 +73,15 @@ public class Player : MonoBehaviour, IWarrior
     public void MoveTo(Vector3 destination)
     {
         animator.SetBool("run",true);
-        transform.DOMove(destination, 3).OnComplete(StopRun);
+        transform.DOMove(new Vector3(destination.x+0.2f,destination.y,destination.z-0.5f), 3).SetEase(Ease.Linear).OnComplete(StopRun);
     }
     public void StopRun()
     {
         animator.SetBool("run", false);
+        if (!isFirstDestination)
         onDestinationArrived?.Invoke();
+        else
+        isFirstDestination = true;
     }    
     public void Dead()
     {

@@ -19,7 +19,8 @@ public class CameraFollower : MonoBehaviour, IGameStartListener
     }
     public void StartShow()
     {
-        //transform.DOMove(secondPlace.position, 2f).SetEase(Ease.Flash).OnComplete(StopShow);
+        Debug.Log("Camera MOVE");
+        transform.DOMove(secondPlace.position, 0.3f).SetEase(Ease.Flash).OnComplete(StopShow);
         transform.DORotateQuaternion(secondPlace.rotation, 1f);
     }
     public void StopShow()
@@ -28,7 +29,7 @@ public class CameraFollower : MonoBehaviour, IGameStartListener
     }
     public void GameCam()
     {
-        transform.DOMove(secondPlace.position, 1f).OnComplete(StartFollow);
+        transform.DOMove(secondPlace.position, 0.3f).OnComplete(StartFollow);
     }
     public void StartFollow()
     {
@@ -44,7 +45,7 @@ public class CameraFollower : MonoBehaviour, IGameStartListener
     }
     private IEnumerator ShowBananaDelay()
     {
-        yield return new WaitForSeconds(2f);
+        yield return new WaitForSeconds(0.3f);
         GameCam();
     }
 

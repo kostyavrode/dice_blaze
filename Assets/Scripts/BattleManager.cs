@@ -24,6 +24,7 @@ public class BattleManager : MonoBehaviour, IGameStartListener, IGameFinishedLis
     private Enemy enemyInBattle;
     private bool isWaitingForGiveDamage;
     private bool isEnemyChanged;
+    private int diceRollResult;
     public Turn Turn
     {
         get { return turn; }
@@ -48,7 +49,7 @@ public class BattleManager : MonoBehaviour, IGameStartListener, IGameFinishedLis
             {
                 if (turn == Turn.ENEMY)
                 {
-                    levelManager.player.ReceiveDamage(levelManager.currentEnemy.GetDamage() * Dice.instance.GetRoll());
+                    levelManager.player.ReceiveDamage(levelManager.currentEnemy.GetDamage() * diceRollResult);
                     Debug.Log("END ENEMY TURN");
                     turn = Turn.PLAYER;
                     levelManager.player.StartTurn();
@@ -58,7 +59,7 @@ public class BattleManager : MonoBehaviour, IGameStartListener, IGameFinishedLis
                 }
                 else
                 {
-                    enemyInBattle.ReceiveDamage(levelManager.player.GetAttackParameters() * Dice.instance.GetRoll());
+                    enemyInBattle.ReceiveDamage(levelManager.player.GetAttackParameters() * diceRollResult);
                     CheckEnemy();
                     CheckDistanceBetweenEnemy();
                     if (enemyInBattle && !isEnemyChanged)
@@ -79,12 +80,12 @@ public class BattleManager : MonoBehaviour, IGameStartListener, IGameFinishedLis
         CreateLevel();
         isBattleStarted = true;
         turn = Turn.PLAYER;
-        
         onPlayerTurnMaked += SwitchTurn;
         onEnemyChanged += ChangeEnemy;
         enemyInBattle = levelManager.currentEnemy;
         Debug.Log("Battle_Started");
         SwitchTurn();
+        levelManager.player.MoveTo(enemyInBattle.transform.position);
     }
     void IGameFinishedListener.OnGameFinished()
     {
@@ -93,6 +94,8 @@ public class BattleManager : MonoBehaviour, IGameStartListener, IGameFinishedLis
     }
     public void Attack(AttackType type=AttackType.SWORD)
     {
+        diceRollResult = Dice.instance.GetRoll();
+        UIManager.instance.ShowDiceRollResult(diceRollResult.ToString());
         if (turn==Turn.PLAYER)
         {
             switch (type)

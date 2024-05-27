@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 public class UIManager : MonoBehaviour
 {
     public static UIManager instance;
@@ -9,6 +10,7 @@ public class UIManager : MonoBehaviour
     [SerializeField] private GameObject inGameUI;
     [SerializeField] private GameObject attackUI;
     [SerializeField] private Image hpBar;
+    [SerializeField] private TMP_Text diceRollResultText;
     private void Awake()
     {
         instance = this;
@@ -44,5 +46,16 @@ public class UIManager : MonoBehaviour
         float temp = newhp/50.0f;
         Debug.Log(temp);
         hpBar.fillAmount = temp;
+    }
+    public void ShowDiceRollResult(string result)
+    {
+        diceRollResultText.text = result;
+        diceRollResultText.gameObject.SetActive(true);
+        StartCoroutine(WaitToCloseDiceRoll());
+    }
+    private IEnumerator WaitToCloseDiceRoll()
+    {
+        yield return new WaitForSeconds(1);
+        diceRollResultText.gameObject.SetActive(false);
     }
 }

@@ -5,6 +5,8 @@ using UnityEngine;
 [ RequireComponent(typeof(GameManager))]
 public class GameListenerInstaller : MonoBehaviour
 {
+    [SerializeField] private CameraFollower component;
+
     private void Awake()
     {
         GameManager gameManager = GetComponent<GameManager>();
@@ -14,5 +16,6 @@ public class GameListenerInstaller : MonoBehaviour
         {
             gameManager.AddListener(listener);
         }
+        gameManager.AddListener(component.GetComponent<IGameStartListener>());
     }
 }
