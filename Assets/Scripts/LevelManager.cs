@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using System;
+using DG.Tweening;
 public class LevelManager : MonoBehaviour
 {
     public static Action<Enemy> onEnemyDeath; 
@@ -11,6 +12,8 @@ public class LevelManager : MonoBehaviour
     public List<Enemy> spawnedEnemies;
     public Player player;
     public Enemy currentEnemy;
+    public Transform rewardTransform;
+    public Transform finalDestination;
     private int killedEnemy;
     public void SpawnEnemies()
     {
@@ -55,8 +58,8 @@ public class LevelManager : MonoBehaviour
         if (spawnedEnemies.Count==0)
         {
             BattleManager.onEnemyChanged?.Invoke(null);
-            GameManager.onEndGame?.Invoke();
-            
+            //GameManager.onEndGame?.Invoke();
+            BattleManager.onAllEnemiesDied?.Invoke();
         }
         else
         {
@@ -64,6 +67,15 @@ public class LevelManager : MonoBehaviour
             BattleManager.onEnemyChanged?.Invoke(currentEnemy);
 
         }
+    }
+    public void OpenReward()
+    {
+        rewardTransform.DORotate(new Vector3(-55, -180, 0), 1).OnComplete(OnRewardOpened);
+    }
+    private void OnRewardOpened()
+    {
+        GameManager.onEndGame?.Invoke();
+        UIManager.instance.ShowWinPanel();
     }
     public Enemy GetCurrentEnemy()
     {

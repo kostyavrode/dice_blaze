@@ -18,6 +18,7 @@ public class BattleManager : MonoBehaviour, IGameStartListener, IGameFinishedLis
     public static Action onPlayerTurnMaked;
     public static Action<Enemy> onEnemyChanged;
     public static Action onTurnSwitch;
+    public static Action onAllEnemiesDied;
     [SerializeField] private LevelManager levelManager;
     private Turn turn;
     private bool isBattleStarted;
@@ -36,9 +37,11 @@ public class BattleManager : MonoBehaviour, IGameStartListener, IGameFinishedLis
             levelManager = GetComponent<LevelManager>();
         }
         Player.onDestinationArrived += ContinueFight;
+        onAllEnemiesDied += EndBattle;
     }
     private void OnDisable()
     {
+        onAllEnemiesDied -= EndBattle;
         Player.onDestinationArrived -= ContinueFight;
     }
     private void Update()
@@ -121,28 +124,13 @@ public class BattleManager : MonoBehaviour, IGameStartListener, IGameFinishedLis
     }
     public void SwitchTurn()
     {
-        Debug.Log("SWITCH TURN");
         if (turn==Turn.PLAYER)
         {
-            Debug.Log("START PLAYER TURN");
             levelManager.player.isCanMakeTurn = true;
-            //enemyInBattle.ReceiveDamage(levelManager.player.GetAttackParameters() * Dice.instance.GetRoll());
-            //CheckEnemy();
-            //if (enemyInBattle)
-            //{
-            //    turn = Turn.ENEMY;
-            //    Debug.Log("END PLAYER TURN");
-            //    SwitchTurn();
-            //}
         }
         else
         {
-            //Debug.Log("START ENEMY TURN");
             Attack();
-            //levelManager.player.ReceiveDamage(levelManager.currentEnemy.GetDamage() * Dice.instance.GetRoll());
-            //Debug.Log("END ENEMY TURN");
-            //turn = Turn.PLAYER;
-            //levelManager.player.StartTurn();
         }
     }
     private void CreateLevel()
@@ -178,6 +166,12 @@ public class BattleManager : MonoBehaviour, IGameStartListener, IGameFinishedLis
             return false;
         }   
     }
+    private void EndBattle()
+    {
+        MovePlayerToReward();
+        UIManager.instance.ViewAttackUI(false);
+        levelManager.player.PlayChestOpenAnim();
+    }
     private void CheckDistanceBetweenEnemy()
     {
         if (levelManager.currentEnemy.transform.position.z- levelManager.player.transform.position.z>3)
@@ -187,11 +181,21 @@ public class BattleManager : MonoBehaviour, IGameStartListener, IGameFinishedLis
     }
     private void ContinueFight()
     {
-        isEnemyChanged = false;
-        turn = Turn.ENEMY;
-        onTurnSwitch?.Invoke();
-        SwitchTurn();
-        
+        if (enemyInBattle)
+        {
+            isEnemyChanged = false;
+            turn = Turn.ENEMY;
+            onTurnSwitch?.Invoke();
+            SwitchTurn();
+        }
+        else
+        {
+            levelManager.OpenReward();
+        }
+    }
+    private void MovePlayerToReward()
+    {
+        levelManager.player.MoveTo(levelManager.finalDestination.position);
     }
     private IEnumerator Wait1Sec()
     {

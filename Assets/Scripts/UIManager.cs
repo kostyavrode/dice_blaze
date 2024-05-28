@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using UnityEngine.SceneManagement;
 public class UIManager : MonoBehaviour
 {
     public static UIManager instance;
@@ -11,6 +12,7 @@ public class UIManager : MonoBehaviour
     [SerializeField] private GameObject attackUI;
     [SerializeField] private Image hpBar;
     [SerializeField] private TMP_Text diceRollResultText;
+    [SerializeField] private GameObject winPanel;
     private void Awake()
     {
         instance = this;
@@ -41,6 +43,10 @@ public class UIManager : MonoBehaviour
             attackUI.SetActive(true);
         }
     }
+    public void ShowWinPanel()
+    {
+        winPanel.SetActive(true);
+    }
     public void ChangeHP(int newhp)
     {
         float temp = newhp/50.0f;
@@ -52,6 +58,14 @@ public class UIManager : MonoBehaviour
         diceRollResultText.text = result;
         diceRollResultText.gameObject.SetActive(true);
         StartCoroutine(WaitToCloseDiceRoll());
+    }
+    public void ViewAttackUI(bool isActive)
+    {
+        attackUI.SetActive(isActive);
+    }
+    public void BackToMenuButton()
+    {
+        SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
     }
     private IEnumerator WaitToCloseDiceRoll()
     {
