@@ -15,15 +15,37 @@ public class UIManager : MonoBehaviour
     [SerializeField] private TMP_Text moneyBar;
     [SerializeField] private TMP_Text diceRollResultText;
     [SerializeField] private GameObject winPanel;
+    [SerializeField] private AudioSource audioSource;
+    [SerializeField] public GameObject[] elements;
+    [SerializeField] private GameObject blackWindow;
+    [SerializeField] private AudioSource source;
     private bool isFirstTime=true;
     private void Awake()
     {
         instance = this;
         BattleManager.onTurnSwitch += CheckAttackUI;
+        if (PlayerPrefs.GetString("Sound") == "true")
+        {
+            audioSource.Play();
+        }
+        else
+        {
+            audioSource.Pause();
+        }
     }
     private void OnDestroy()
     {
         BattleManager.onTurnSwitch -= CheckAttackUI;
+    }
+    public void CloseUI()
+    {
+        source.Pause();
+        foreach (GameObject obj in elements)
+        {
+            obj.SetActive(false);
+        }
+        blackWindow.SetActive(true);
+
     }
     public void StartGame()
     {
@@ -81,6 +103,18 @@ public class UIManager : MonoBehaviour
     public void ShowMoney(string m)
     {
         moneyBar.text = m;
+    }
+    public void SoundOn()
+    {
+        PlayerPrefs.SetString("Sound", "true");
+        PlayerPrefs.Save();
+        audioSource.Play();
+    }
+    public void SoundOff()
+    {
+        PlayerPrefs.SetString("Sound", "false");
+        PlayerPrefs.Save();
+        audioSource.Pause();
     }
     private IEnumerator WaitToCloseDiceRoll()
     {
