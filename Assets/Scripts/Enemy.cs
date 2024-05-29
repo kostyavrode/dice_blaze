@@ -5,8 +5,8 @@ using UnityEngine;
 public class Enemy : MonoBehaviour, IWarrior
 {
     public Animator animator;
-    private int damage=1;
-    private int hp=10;
+    private int damage=3;
+    private int hp=30;
     private int armor=1;
 
     public void Attack(int multi)

@@ -5,12 +5,17 @@ using UnityEngine;
 public class Dice : MonoBehaviour
 {
     public static Dice instance;
+    public DiceRoller diceRoller;
+    public GameObject diceObj;
     private void Awake()
     {
         instance = this;
     }
     public int GetRoll()
     {
-        return Random.Range(0, 7);
+        int r = Random.Range(1, 6);
+        diceObj.SetActive(true);
+        diceRoller.Roll(r);
+        return r;
     }
 }
