@@ -38,11 +38,13 @@ public class BattleManager : MonoBehaviour, IGameStartListener, IGameFinishedLis
         }
         Player.onDestinationArrived += ContinueFight;
         onAllEnemiesDied += EndBattle;
+        Player.onPlayerDead += StopGamePlayerDead;
     }
     private void OnDisable()
     {
         onAllEnemiesDied -= EndBattle;
         Player.onDestinationArrived -= ContinueFight;
+        Player.onPlayerDead -= StopGamePlayerDead;
     }
     private void Update()
     {
@@ -77,6 +79,17 @@ public class BattleManager : MonoBehaviour, IGameStartListener, IGameFinishedLis
                 }
             }
         }
+    }
+    private void StopGamePlayerDead()
+    {
+        GameManager.onEndGame?.Invoke();
+        //enemyInBattle = null;
+        isWaitingForGiveDamage = false;
+        UIManager.instance.ViewAttackUI(false);
+        //UIManager.instance.ShowWinPanel();
+        //InfoController.instance.ReceiveMoney(UnityEngine.Random.Range(0, 1));
+        UIManager.instance.ShowLosePanel();
+        UIManager.instance.isGameEnd = true;
     }
     void IGameStartListener.OnGameStarted()
     {

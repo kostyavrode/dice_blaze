@@ -25,6 +25,7 @@ public class LevelManager : MonoBehaviour
         currentEnemy = spawnedEnemies[0];
         onEnemyDeath += DeleteEnemy;
     }
+   
     public void OnDestroy()
     {
         onEnemyDeath -= DeleteEnemy;

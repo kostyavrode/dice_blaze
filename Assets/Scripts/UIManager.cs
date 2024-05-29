@@ -15,11 +15,13 @@ public class UIManager : MonoBehaviour
     [SerializeField] private TMP_Text moneyBar;
     [SerializeField] private TMP_Text diceRollResultText;
     [SerializeField] private GameObject winPanel;
+    [SerializeField] private GameObject losePanel;
     [SerializeField] private AudioSource audioSource;
     [SerializeField] public GameObject[] elements;
     [SerializeField] private GameObject blackWindow;
     [SerializeField] private AudioSource source;
     private bool isFirstTime=true;
+    public bool isGameEnd;
     private void Awake()
     {
         instance = this;
@@ -36,6 +38,13 @@ public class UIManager : MonoBehaviour
     private void OnDestroy()
     {
         BattleManager.onTurnSwitch -= CheckAttackUI;
+    }
+    private void FixedUpdate()
+    {
+        if (isGameEnd)
+        {
+            attackUI.SetActive(false);
+        }
     }
     public void CloseUI()
     {
@@ -86,6 +95,11 @@ public class UIManager : MonoBehaviour
         diceRollResultText.text = result;
         diceRollResultText.gameObject.SetActive(true);
         StartCoroutine(WaitToCloseDiceRoll());
+    }
+    public void ShowLosePanel()
+    {
+        losePanel.SetActive(true);
+        attackUI.SetActive(false);
     }
     public void ViewAttackUI(bool isActive)
     {

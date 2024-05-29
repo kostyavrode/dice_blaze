@@ -6,9 +6,10 @@ using System;
 public class Player : MonoBehaviour, IWarrior
 {
     public static Action onDestinationArrived;
+    public static Action onPlayerDead;
     public Animator animator;
     private int damage=5;
-    private int hp=50;
+    public int hp=50;
     private int armor;
     public bool isCanMakeTurn;
     private bool isFirstDestination;
@@ -90,5 +91,6 @@ public class Player : MonoBehaviour, IWarrior
     public void Dead()
     {
         Debug.Log("Player Dead");
+        onPlayerDead?.Invoke();
     }    
 }
