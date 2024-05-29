@@ -92,5 +92,6 @@ public class Player : MonoBehaviour, IWarrior
     {
         Debug.Log("Player Dead");
         onPlayerDead?.Invoke();
+        animator.SetBool("dead", true);
     }    
 }
