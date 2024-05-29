@@ -87,8 +87,9 @@ public class BattleManager : MonoBehaviour, IGameStartListener, IGameFinishedLis
         onEnemyChanged += ChangeEnemy;
         enemyInBattle = levelManager.currentEnemy;
         Debug.Log("Battle_Started");
-        SwitchTurn();
         levelManager.player.MoveTo(enemyInBattle.transform.position);
+        StartCoroutine(WaitTostartBattle());
+        UIManager.instance.ViewAttackUI(false);
     }
     void IGameFinishedListener.OnGameFinished()
     {
@@ -171,6 +172,7 @@ public class BattleManager : MonoBehaviour, IGameStartListener, IGameFinishedLis
         MovePlayerToReward();
         UIManager.instance.ViewAttackUI(false);
         levelManager.player.PlayChestOpenAnim();
+        InfoController.instance.ReceiveMoney(UnityEngine.Random.Range(8, 10));
     }
     private void CheckDistanceBetweenEnemy()
     {
@@ -201,5 +203,10 @@ public class BattleManager : MonoBehaviour, IGameStartListener, IGameFinishedLis
     {
         yield return new WaitForSeconds(0.5f);
         isWaitingForGiveDamage = true;
+    }
+    private IEnumerator WaitTostartBattle()
+    {
+        yield return new WaitForSeconds(2);
+        SwitchTurn();
     }
 }

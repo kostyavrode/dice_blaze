@@ -10,9 +10,12 @@ public class UIManager : MonoBehaviour
     [SerializeField] private BattleManager battleManager;
     [SerializeField] private GameObject inGameUI;
     [SerializeField] private GameObject attackUI;
+    [SerializeField] private TMP_Text goldToEarnText;
     [SerializeField] private Image hpBar;
+    [SerializeField] private TMP_Text moneyBar;
     [SerializeField] private TMP_Text diceRollResultText;
     [SerializeField] private GameObject winPanel;
+    private bool isFirstTime=true;
     private void Awake()
     {
         instance = this;
@@ -26,7 +29,6 @@ public class UIManager : MonoBehaviour
     {
         GameManager.instance.StartGame();
         inGameUI.SetActive(true);
-
     }
     public void LegAttackButton()
     { 
@@ -38,9 +40,13 @@ public class UIManager : MonoBehaviour
     }
     private void CheckAttackUI()
     {
-        if (battleManager.Turn==Turn.PLAYER)
+        if (battleManager.Turn==Turn.PLAYER && !isFirstTime)
         {
             attackUI.SetActive(true);
+        }
+        else
+        {
+            isFirstTime = false;
         }
     }
     public void ShowWinPanel()
@@ -66,6 +72,15 @@ public class UIManager : MonoBehaviour
     public void BackToMenuButton()
     {
         SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+    }
+    public void ShowEarnedGold(string t)
+    {
+        goldToEarnText.text = t;
+        goldToEarnText.gameObject.SetActive(true);
+    }
+    public void ShowMoney(string m)
+    {
+        moneyBar.text = m;
     }
     private IEnumerator WaitToCloseDiceRoll()
     {
