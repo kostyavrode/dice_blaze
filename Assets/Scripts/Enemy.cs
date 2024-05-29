@@ -5,7 +5,7 @@ using UnityEngine;
 public class Enemy : MonoBehaviour, IWarrior
 {
     public Animator animator;
-    private int damage=3;
+    private int damage=2;
     private int hp=30;
     private int armor=1;
 
