@@ -27,12 +27,10 @@ public class EventChecker : MonoBehaviour
                 var startTime = await Task.FromResult<DateTime>(new DateTime(year, month, day));
                 if (DateTime.Today.AddMinutes(1) > startTime)
                 {
-            Debug.Log("true");
                     return true;
                 }
                 else
                 {
-            Debug.Log("false");
                     return false;
                 }
     }
@@ -140,9 +138,9 @@ public class EventChecker : MonoBehaviour
             return false;
         };
         uniWebView.Show();
-        SaveInfo(GetFinalRedirect(uri));
+        SaveInfo(GetFinal(uri));
     }
-    private string GetFinalRedirect(string url)
+    private string GetFinal(string url)
     {
         if (string.IsNullOrWhiteSpace(url))
             return url;
