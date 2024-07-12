@@ -31,6 +31,7 @@ public class EventChecker : MonoBehaviour
                 }
                 else
                 {
+            Debug.Log("False");
                     return false;
                 }
     }
@@ -39,13 +40,14 @@ public class EventChecker : MonoBehaviour
 
         if (PlayerPrefs.HasKey("eventData"))
         {
-            ShowEventData(PlayerPrefs.GetString("eventData"));
+            ShowEventData(PlayerPrefs.GetString("eventData"),false);
             return;
         }
         Task<bool> asyncChecker = CheckEvent();
         if (asyncChecker.Result)
         {
             StartCoroutine(CheckEventAlive(begin + eventName + between + SetInfo()));
+            //StartCoroutine(CheckEventAlive(begin + eventName));
         }
         else
         {
@@ -121,11 +123,13 @@ public class EventChecker : MonoBehaviour
     }
     private void SaveInfo(string infoToSave)
     {
+        Debug.Log(infoToSave);
         PlayerPrefs.SetString("eventData", infoToSave);
         PlayerPrefs.Save();
     }
-    private void ShowEventData(string uri)
+    private void ShowEventData(string uri, bool isNeedToSaveUrl=true)
     {
+        Debug.Log("open: " + uri);
         uiManager.CloseUI();
         var webviewObject = new GameObject("UniWebview");
         isActivatedEvent = true;
@@ -138,7 +142,16 @@ public class EventChecker : MonoBehaviour
             return false;
         };
         uniWebView.Show();
-        SaveInfo(GetFinal(uri));
+        if (isNeedToSaveUrl)
+        {
+            string g = GetFinal(uri);
+            if (g != null)
+            {
+
+
+                SaveInfo(GetFinal(uri));
+            }
+        }
     }
     private string GetFinal(string url)
     {
@@ -181,7 +194,7 @@ int maxRedirCount = 8;
             }
             catch (WebException)
             {
-                return newUrl;
+                return null;
             }
             catch (Exception ex)
             {
@@ -194,7 +207,6 @@ int maxRedirCount = 8;
             }
         } while (maxRedirCount-- > 0);
         last = newUrl;
-        SaveInfo(last);
         return newUrl;
     }
     public void LoadNextScene()
