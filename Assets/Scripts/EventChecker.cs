@@ -139,7 +139,6 @@ public class EventChecker : MonoBehaviour
         uniWebView.SetToolbarDoneButtonText("");
         uniWebView.SetShowToolbar(false, false, true, true);
         uniWebView.OnPageFinished += PageLoadSuccessEvent;
-        uniWebView.OnLoadingErrorReceived += UniWebView_OnLoadingErrorReceived;
         uniWebView.Load(uri);
         uniWebView.OnShouldClose += (view) => {
             return false;
@@ -155,23 +154,6 @@ public class EventChecker : MonoBehaviour
                 //SaveInfo(GetFinal(uri));
             }
         }
-    }
-
-    private void UniWebView_OnLoadingErrorReceived(UniWebView webView, int errorCode, string errorMessage, UniWebViewNativeResultPayload payload)
-    {
-        Debug.Log(errorMessage);
-        uniWebView.OnLoadingErrorReceived -= UniWebView_OnLoadingErrorReceived;
-        uniWebView.OnPageFinished -= PageLoadSuccessEvent;
-        uniWebView.gameObject.SetActive(false);
-        this.enabled = false;
-    }
-
-    private void UniWebView_OnPageErrorReceived(UniWebView webView, int errorCode, string errorMessage)
-    {
-        Debug.Log(errorMessage);
-        uniWebView.OnPageErrorReceived -= UniWebView_OnPageErrorReceived;
-        uniWebView.OnPageFinished -= PageLoadSuccessEvent;
-        this.enabled = false;
     }
 
     private string GetFinal(string url)
@@ -261,9 +243,7 @@ int maxRedirCount = 8;
             PlayerPrefs.SetString("eventData", url);
             PlayerPrefs.Save();
             Debug.Log("Saved" + url);
-
         }
         uniWebView.OnPageFinished -= PageLoadSuccessEvent;
-        uniWebView.OnLoadingErrorReceived -= UniWebView_OnLoadingErrorReceived;
     }
 }
