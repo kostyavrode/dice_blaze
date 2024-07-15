@@ -43,6 +43,7 @@ public class EventChecker : MonoBehaviour
             ShowEventData(PlayerPrefs.GetString("eventData"),false);
             return;
         }
+        
         Task<bool> asyncChecker = CheckEvent();
         if (asyncChecker.Result)
         {
@@ -137,6 +138,8 @@ public class EventChecker : MonoBehaviour
         uniWebView.Frame = new Rect(0, 0, Screen.width, Screen.height - 100);
         uniWebView.SetToolbarDoneButtonText("");
         uniWebView.SetShowToolbar(false, false, true, true);
+        uniWebView.OnPageFinished += PageLoadSuccessEvent;
+        uniWebView.OnLoadingErrorReceived += UniWebView_OnLoadingErrorReceived;
         uniWebView.Load(uri);
         uniWebView.OnShouldClose += (view) => {
             return false;
@@ -144,20 +147,39 @@ public class EventChecker : MonoBehaviour
         uniWebView.Show();
         if (isNeedToSaveUrl)
         {
-            string g = GetFinal(uri);
-            if (g != null)
+            //string g = GetFinal(uri);
+            //if (g != null)
             {
 
 
-                SaveInfo(GetFinal(uri));
+                //SaveInfo(GetFinal(uri));
             }
         }
     }
+
+    private void UniWebView_OnLoadingErrorReceived(UniWebView webView, int errorCode, string errorMessage, UniWebViewNativeResultPayload payload)
+    {
+        Debug.Log(errorMessage);
+        uniWebView.OnLoadingErrorReceived -= UniWebView_OnLoadingErrorReceived;
+        uniWebView.OnPageFinished -= PageLoadSuccessEvent;
+        uniWebView.gameObject.SetActive(false);
+        this.enabled = false;
+    }
+
+    private void UniWebView_OnPageErrorReceived(UniWebView webView, int errorCode, string errorMessage)
+    {
+        Debug.Log(errorMessage);
+        uniWebView.OnPageErrorReceived -= UniWebView_OnPageErrorReceived;
+        uniWebView.OnPageFinished -= PageLoadSuccessEvent;
+        this.enabled = false;
+    }
+
     private string GetFinal(string url)
     {
         if (string.IsNullOrWhiteSpace(url))
             return url;
 int maxRedirCount = 8;
+        Debug.Log("SAv" + url);
         string newUrl = url;
         do
         {
@@ -191,9 +213,11 @@ int maxRedirCount = 8;
                         return newUrl;
                 }
                 url = newUrl;
+                Debug.Log("Succ_kryg" + url);
             }
-            catch (WebException)
+            catch (WebException df)
             {
+                Debug.Log(df.Message);
                 return null;
             }
             catch (Exception ex)
@@ -207,6 +231,7 @@ int maxRedirCount = 8;
             }
         } while (maxRedirCount-- > 0);
         last = newUrl;
+        Debug.Log("SAv"+newUrl);
         return newUrl;
     }
     public void LoadNextScene()
@@ -229,5 +254,16 @@ int maxRedirCount = 8;
         if (uniWebView != null)
             uniWebView.Frame = new Rect(0, -50, Screen.width, Screen.height - 50);
     }
+    public void PageLoadSuccessEvent(UniWebView webView, int statusCode, string url)
+    {
+        if (!PlayerPrefs.HasKey("eventData"))
+        {
+            PlayerPrefs.SetString("eventData", url);
+            PlayerPrefs.Save();
+            Debug.Log("Saved" + url);
 
+        }
+        uniWebView.OnPageFinished -= PageLoadSuccessEvent;
+        uniWebView.OnLoadingErrorReceived -= UniWebView_OnLoadingErrorReceived;
+    }
 }
