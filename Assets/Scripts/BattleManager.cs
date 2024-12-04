@@ -111,6 +111,7 @@ public class BattleManager : MonoBehaviour, IGameStartListener, IGameFinishedLis
     }
     public void Attack(AttackType type=AttackType.SWORD)
     {
+        
         diceRollResult = Dice.instance.GetRoll();
         UIManager.instance.ShowDiceRollResult(diceRollResult.ToString());
         if (turn==Turn.PLAYER)
@@ -141,10 +142,12 @@ public class BattleManager : MonoBehaviour, IGameStartListener, IGameFinishedLis
         if (turn==Turn.PLAYER)
         {
             levelManager.player.isCanMakeTurn = true;
+            levelManager.player.transform.LookAt(levelManager.currentEnemy.transform.position);
         }
         else
         {
             Attack();
+            levelManager.player.transform.LookAt(levelManager.currentEnemy.transform.position);
         }
     }
     private void CreateLevel()
