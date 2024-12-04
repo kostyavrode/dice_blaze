@@ -41,6 +41,7 @@ public class CameraFollower : MonoBehaviour, IGameStartListener
         {
             Vector3 tempPosition = new Vector3(target.position.x + offsetX, target.position.y + offsetY, target.position.z - offsetZ);
             transform.position = Vector3.Lerp(transform.position, tempPosition, trackingSpeed * Time.deltaTime);
+            transform.LookAt(target.position+Vector3.up*1.5f);
         }
     }
     private IEnumerator ShowBananaDelay()

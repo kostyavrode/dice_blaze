@@ -13,6 +13,7 @@ public class Player : MonoBehaviour, IWarrior
     private int armor;
     public bool isCanMakeTurn;
     private bool isFirstDestination;
+    public GameObject[] buttons;
 
     private void Update()
     {
@@ -66,6 +67,11 @@ public class Player : MonoBehaviour, IWarrior
         this.hp = hp;
         this.armor = armor;
     }
+
+    public void IncreaseDamage()
+    {
+        damage++;
+    }
     public void StartTurn()
     {
         Debug.Log("Player Turn");
@@ -75,6 +81,19 @@ public class Player : MonoBehaviour, IWarrior
     {
         animator.SetBool("run",true);
         transform.DOMove(new Vector3(destination.x+0.2f,destination.y,destination.z-0.5f), 3).SetEase(Ease.Linear).OnComplete(StopRun);
+        transform.LookAt(destination);
+        if (hp!=50)
+        {
+            EnableButons(true);
+        }
+    }
+
+    private void EnableButons(bool state)
+    {
+        foreach (GameObject button in buttons)
+        {
+            button.SetActive(state);
+        }
     }
     public void PlayChestOpenAnim()
     {
@@ -87,6 +106,7 @@ public class Player : MonoBehaviour, IWarrior
         onDestinationArrived?.Invoke();
         else
         isFirstDestination = true;
+        EnableButons(false);
     }    
     public void Dead()
     {
