@@ -87,7 +87,7 @@ public class BattleManager : MonoBehaviour, IGameStartListener, IGameFinishedLis
         isWaitingForGiveDamage = false;
         UIManager.instance.ViewAttackUI(false);
         //UIManager.instance.ShowWinPanel();
-        //InfoController.instance.ReceiveMoney(UnityEngine.Random.Range(0, 1));
+        InfoController.instance.ReceiveMoney(UnityEngine.Random.Range(1, 5));
         UIManager.instance.ShowLosePanel();
         UIManager.instance.isGameEnd = true;
     }

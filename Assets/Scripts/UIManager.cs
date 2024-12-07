@@ -114,6 +114,11 @@ public class UIManager : MonoBehaviour
         goldToEarnText.text = t;
         goldToEarnText.gameObject.SetActive(true);
     }
+
+    public void CloseApp()
+    {
+        Application.Quit();
+    }
     public void ShowMoney(string m)
     {
         moneyBar.text = m;
