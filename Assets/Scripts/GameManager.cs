@@ -72,4 +72,8 @@ public class GameManager : MonoBehaviour
         ChangeGameState(GameState.PLAYING);
         Debug.Log("Game Started");
     }
+    private void OnApplicationQuit()
+    {
+        PlayerPrefs.SetInt("ISFIRST", 0);
+    }
 }
