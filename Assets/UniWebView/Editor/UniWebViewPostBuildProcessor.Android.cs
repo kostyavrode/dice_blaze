@@ -1,5 +1,5 @@
-
-#if UNITY_2023_2_OR_NEWER
+// #if UNITY_2023_2_OR_NEWER
+#if UNIWEBVIEW_NEW_ANDROID_BUILD_SYSTEM
 
 using System;
 using System.Linq;
@@ -192,17 +192,15 @@ class UniWebViewPostBuildModifier : AndroidProjectFilesModifier {
 
 #else
 using System;
-using UnityEditor;
+using System.IO;
 using UnityEditor.Android;
 using UnityEngine;
-using System.IO;
-using System.Text;
 
 class UniWebViewPostBuildProcessor : IPostGenerateGradleAndroidProject
 {
     public int callbackOrder { get { return 1; } }
     public void OnPostGenerateGradleAndroidProject(string path) {
-        Debug.Log("<UniWebView> UniWebView Post Build Scirpt is patching manifest file and gradle file...");
+        Debug.Log("<UniWebView> UniWebView Post Build Script is patching manifest file and gradle file...");
         PatchAndroidManifest(path);
         PatchBuildGradle(path);
         PatchGradleProperty(path);
@@ -258,31 +256,31 @@ class UniWebViewPostBuildProcessor : IPostGenerateGradleAndroidProject
         var androidXCoreVersion = String.IsNullOrWhiteSpace(settings.androidXCoreVersion) 
             ? UniWebViewEditorSettings.defaultAndroidXCoreVersion : settings.androidXCoreVersion;
         
-        var dependenciesNode = config.ROOT.FindChildNodeByName("dependencies");
+        var dependenciesNode = config.Root.FindChildNodeByName("dependencies");
         if (dependenciesNode != null) {
             // Add kotlin
             if (settings.addsKotlin) {
-                dependenciesNode.ReplaceContenOrAddStartsWith(kotlinPrefix, kotlinPrefix + kotlinVersion + "'");
+                dependenciesNode.ReplaceContentOrAddStartsWith(kotlinPrefix, kotlinPrefix + kotlinVersion + "'");
                 Debug.Log("<UniWebView> Updated Kotlin dependency in build.gradle.");
             }
 
             // Add browser package
             if (settings.addsAndroidBrowser) {
-                dependenciesNode.ReplaceContenOrAddStartsWith(browserPrefix, browserPrefix + browserVersion + "'");
+                dependenciesNode.ReplaceContentOrAddStartsWith(browserPrefix, browserPrefix + browserVersion + "'");
                 Debug.Log("<UniWebView> Updated Browser dependency in build.gradle.");
             }
 
             // Add Android X Core package
             if (!settings.addsAndroidBrowser && settings.addsAndroidXCore) {
                 // When adding android browser to the project, we don't need to add Android X Core package, since gradle resolves for it.
-                dependenciesNode.ReplaceContenOrAddStartsWith(androidXCorePrefix, androidXCorePrefix + androidXCoreVersion + "'");
+                dependenciesNode.ReplaceContentOrAddStartsWith(androidXCorePrefix, androidXCorePrefix + androidXCoreVersion + "'");
                 Debug.Log("<UniWebView> Updated Android X Core dependency in build.gradle.");
             }
         } else {
             Debug.LogError("UniWebViewPostBuildProcessor didn't find the `dependencies` field in build.gradle.");
             Debug.LogError("Although we can continue to add a `dependencies`, make sure you have setup Gradle and the template correctly.");
 
-            var newNode = new UniWebViewGradleNode("dependencies", config.ROOT);
+            var newNode = new UniWebViewGradleNode("dependencies", config.Root);
             if (settings.addsKotlin) {
                 newNode.AppendContentNode(kotlinPrefix + kotlinVersion + "'");
             }
@@ -294,7 +292,7 @@ class UniWebViewPostBuildProcessor : IPostGenerateGradleAndroidProject
                 newNode.AppendContentNode(androidXCorePrefix + androidXCoreVersion + "'");
             }
             newNode.AppendContentNode("implementation(name: 'UniWebView', ext:'aar')");
-            config.ROOT.AppendChildNode(newNode);
+            config.Root.AppendChildNode(newNode);
         }
         config.Save();
     }

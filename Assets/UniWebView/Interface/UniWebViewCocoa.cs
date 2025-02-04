@@ -24,7 +24,8 @@ using System.Reflection;
 
 public class UniWebViewInterface {
     
-    private const string StaticListenerName = "UniWebView-static";
+    private const string StaticListenerName = "__UniWebViewGlobalListener";
+    private const string GlobalChannelIdentifier = "__UniWebViewGlobalChannelIdentifier";
     
     static UniWebViewInterface() {
         ConnectMessageSender();
@@ -72,18 +73,15 @@ public class UniWebViewInterface {
         );
 
         if (name == StaticListenerName) {
-            MethodInfo methodInfo = typeof(UniWebViewStaticListener)
-                .GetMethod(method, BindingFlags.Static | BindingFlags.Public);
-            methodInfo.Invoke(null, new object[] { parameters });
-            return;
-        }
-        
-        var listener = UniWebViewNativeListener.GetListener(name);
-        if (listener) {
-            MethodInfo methodInfo = typeof(UniWebViewNativeListener).GetMethod(method);
-            if (methodInfo != null) {
-                methodInfo.Invoke(listener, new object[] { parameters });
-            }
+            UniWebViewStaticListener.InvokeStaticMethod(method, parameters);
+        } else {
+            var listener = UniWebViewNativeListener.GetListener(name);
+            if (listener) {
+                MethodInfo methodInfo = typeof(UniWebViewNativeListener).GetMethod(method);
+                if (methodInfo != null) {
+                    methodInfo.Invoke(listener, new object[] { parameters });
+                }
+            }   
         }
     }
     
@@ -103,11 +101,19 @@ public class UniWebViewInterface {
         string method = Marshal.PtrToStringAuto(methodPtr);
         string parameters = Marshal.PtrToStringAuto(parameterPtr);
 
-        UniWebViewLogger.Instance.Verbose("ChannelFunc invoked by native side. Name: " + name + " Method: " 
-                                          + method + " Params: " + parameters);
-        return UniWebViewChannelMethodManager.Instance.InvokeMethod(name, method, parameters);
+        // Shortcut for global channel method.
+        if (name == GlobalChannelIdentifier) {
+            UniWebViewLogger.Instance.Verbose(
+                "Global channel method invoked. Method: " + method + " Params: " + parameters
+            );
+            return UniWebViewStaticListener.InvokeStaticMethod(method, parameters);
+        } else {
+            UniWebViewLogger.Instance.Verbose("ChannelFunc invoked by native side. Name: " + name + " Method: " 
+                                              + method + " Params: " + parameters);
+            return UniWebViewChannelMethodManager.Instance.InvokeMethod(name, method, parameters);   
+        }
     }
-    
+
     [DllImport(DllLib)]
     private static extern void uv_setLogLevel(int level);
     public static void SetLogLevel(int level) {
@@ -371,10 +377,24 @@ public class UniWebViewInterface {
     }
 
     [DllImport(DllLib)]
+    private static extern void uv_clearCookiesAsync(string identifier);
+    public static void ClearCookies(string identifier) {
+        CheckPlatform();
+        uv_clearCookiesAsync(identifier);
+    }
+
+    [DllImport(DllLib)]
     private static extern void uv_setCookie(string url, string cookie, bool skipEncoding);
     public static void SetCookie(string url, string cookie, bool skipEncoding) {
         CheckPlatform();
         uv_setCookie(url, cookie, skipEncoding);
+    }
+    
+    [DllImport(DllLib)]
+    private static extern void uv_setCookieAsync(string url, string cookie, bool skipEncoding, string identifier);
+    public static void SetCookie(string url, string cookie, bool skipEncoding, string identifier) {
+        CheckPlatform();
+        uv_setCookieAsync(url, cookie, skipEncoding, identifier);
     }
 
     [DllImport(DllLib)]
@@ -383,6 +403,13 @@ public class UniWebViewInterface {
         CheckPlatform();
         uv_removeCookies(url, skipEncoding);
     }
+    
+    [DllImport(DllLib)]
+    private static extern void uv_removeCookiesAsync(string url, bool skipEncoding, string identifier);
+    public static void RemoveCookies(string url, bool skipEncoding, string identifier) {
+        CheckPlatform();
+        uv_removeCookiesAsync(url, skipEncoding, identifier);
+    }
 
     [DllImport(DllLib)]
     private static extern void uv_removeCookie(string url, string key, bool skipEncoding);
@@ -390,12 +417,26 @@ public class UniWebViewInterface {
         CheckPlatform();
         uv_removeCookie(url, key, skipEncoding);
     }
+    
+    [DllImport(DllLib)]
+    private static extern void uv_removeCookieAsync(string url, string key, bool skipEncoding, string identifier);
+    public static void RemoveCookie(string url, string key, bool skipEncoding, string identifier) {
+        CheckPlatform();
+        uv_removeCookieAsync(url, key, skipEncoding, identifier);
+    }
 
     [DllImport(DllLib)]
     private static extern string uv_getCookie(string url, string key, bool skipEncoding);
     public static string GetCookie(string url, string key, bool skipEncoding) {
         CheckPlatform();
         return uv_getCookie(url, key, skipEncoding);
+    }
+    
+    [DllImport(DllLib)]
+    private static extern void uv_getCookieAsync(string url, string key, bool skipEncoding, string identifier);
+    public static void GetCookie(string url, string key, bool skipEncoding, string identifier) {
+        CheckPlatform();
+        uv_getCookieAsync(url, key, skipEncoding, identifier);
     }
 
     [DllImport(DllLib)]
@@ -727,6 +768,13 @@ public class UniWebViewInterface {
     public static void AuthenticationStart(string name) {
         CheckPlatform();
         uv_authenticationStart(name);
+    }
+    
+    [DllImport(DllLib)]
+    private static extern void uv_authenticationCancel(string name);
+    public static void AuthenticationCancel(string name) {
+        CheckPlatform();
+        uv_authenticationCancel(name);
     }
 
     [DllImport(DllLib)]

@@ -132,6 +132,10 @@ public class UniWebViewAuthenticationFlowCustomize : UniWebViewAuthenticationCom
 
         return authorizeArgs;
     }
+    
+    public string GetAdditionalAuthenticationUriQuery() {
+        return optional.additionalAuthenticationUriQuery;
+    }
 
     /// <summary>
     /// Implements required method in `IUniWebViewAuthenticationFlow`.
@@ -227,4 +231,5 @@ public class UniWebViewAuthenticationFlowCustomizeOptional {
     public UniWebViewAuthenticationPKCE PKCESupport = UniWebViewAuthenticationPKCE.None; 
     public bool enableState = false;
     public string clientSecret = "";
+    public string additionalAuthenticationUriQuery = "";
 }

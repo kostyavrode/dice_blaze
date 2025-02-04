@@ -46,8 +46,8 @@ public class UniWebViewAuthenticationFlowTwitter : UniWebViewAuthenticationCommo
     /// </summary>
     public UniWebViewAuthenticationFlowTwitterOptional optional;
     
-    private string responseType = "code";
-    private string grantType = "authorization_code";
+    private const string responseType = "code";
+    private const string grantType = "authorization_code";
     
     private readonly UniWebViewAuthenticationConfiguration config = 
         new UniWebViewAuthenticationConfiguration(
@@ -114,6 +114,10 @@ public class UniWebViewAuthenticationFlowTwitter : UniWebViewAuthenticationCommo
         }
 
         return authorizeArgs;
+    }
+    
+    public string GetAdditionalAuthenticationUriQuery() {
+        return optional.additionalAuthenticationUriQuery;
     }
 
     /// <summary>
@@ -203,6 +207,16 @@ public class UniWebViewAuthenticationFlowTwitterOptional {
     /// authentication callback. This has to be `true`, otherwise, Twitter will reject the authentication request.
     /// </summary>
     public bool enableState = true;
+    
+    /// <summary>
+    /// The additional query arguments that are used to construct the query string of the authentication request.
+    /// 
+    /// This is useful when you want to add some custom parameters to the authentication request. This string will be 
+    /// appended to the query string that constructed from `GetAuthenticationUriArguments`. 
+    /// 
+    /// For example, if you set `prompt=consent&ui_locales=en`, it will be contained in the final authentication query.
+    /// </summary>
+    public string additionalAuthenticationUriQuery = "";
 }
 
 /// <summary>

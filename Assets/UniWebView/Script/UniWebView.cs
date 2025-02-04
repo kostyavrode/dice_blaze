@@ -15,9 +15,9 @@
 //  arising from, out of or in connection with the software or the use of other dealing in the software.
 //
 using UnityEngine;
-using System.Collections;
 using System.Collections.Generic;
 using System;
+using System.Threading.Tasks;
 
 /// <summary>
 /// Main class of UniWebView. Any `GameObject` instance with this script can represent a webview object in the scene. 
@@ -290,8 +290,12 @@ public class UniWebView: MonoBehaviour {
     #pragma warning restore 0649
 
     // Action callback holders
-    private Dictionary<String, Action> actions = new Dictionary<String, Action>();
-    private Dictionary<String, Action<UniWebViewNativeResultPayload>> payloadActions = new Dictionary<String, Action<UniWebViewNativeResultPayload>>();
+    private readonly Dictionary<String, Action> actions
+        = new Dictionary<String, Action>();
+    private readonly Dictionary<String, Action<UniWebViewNativeResultPayload>> payloadActions
+        = new Dictionary<String, Action<UniWebViewNativeResultPayload>>();
+    private static readonly Dictionary<String, Action<UniWebViewNativeResultPayload>> globalPayloadActions
+        = new Dictionary<String, Action<UniWebViewNativeResultPayload>>(); 
 
     [SerializeField]
     private Rect frame;
@@ -300,7 +304,7 @@ public class UniWebView: MonoBehaviour {
     /// The first two values of `Rect` is `x` and `y` position and the followed two `width` and `height`.
     /// </summary>
     public Rect Frame {
-        get { return frame; }
+        get => frame;
         set {
             frame = value;
             UpdateFrame();
@@ -318,9 +322,7 @@ public class UniWebView: MonoBehaviour {
     /// 
     /// </summary>
     public RectTransform ReferenceRectTransform {
-        get {
-            return referenceRectTransform;
-        }
+        get => referenceRectTransform;
         set {
             referenceRectTransform = value;
             UpdateFrame();
@@ -334,9 +336,7 @@ public class UniWebView: MonoBehaviour {
     /// <summary>
     /// The url of current loaded web page.
     /// </summary>
-    public string Url {
-        get { return UniWebViewInterface.GetUrl(listener.Name); } 
-    }
+    public string Url => UniWebViewInterface.GetUrl(listener.Name);
 
     /// <summary>
     /// Updates and sets current frame of web view to match the setting.
@@ -351,55 +351,58 @@ public class UniWebView: MonoBehaviour {
         UniWebViewInterface.SetFrame(listener.Name, (int)rect.x, (int)rect.y, (int)rect.width, (int)rect.height);
     }
 
-    Rect NextFrameRect() {
+    Rect NextFrameRect()
+    {
         if (referenceRectTransform == null) {
             UniWebViewLogger.Instance.Info("Using Frame setting to determine web view frame.");
             return frame;
-        } else {
-            UniWebViewLogger.Instance.Info("Using reference RectTransform to determine web view frame.");
-            var worldCorners = new Vector3[4];
-            
-            referenceRectTransform.GetWorldCorners(worldCorners);
-            
-            var bottomLeft = worldCorners[0];
-            var topLeft = worldCorners[1];
-            var topRight = worldCorners[2];
-            var bottomRight = worldCorners[3];
+        }
 
-            var canvas = referenceRectTransform.GetComponentInParent<Canvas>();
-            if (canvas == null) {
-                return frame;
-            }
+        UniWebViewLogger.Instance.Info("Using reference RectTransform to determine web view frame.");
+        var worldCorners = new Vector3[4];
+            
+        referenceRectTransform.GetWorldCorners(worldCorners);
+            
+        // var bottomLeft = worldCorners[0];
+        var topLeft = worldCorners[1];
+        // var topRight = worldCorners[2];
+        var bottomRight = worldCorners[3];
 
-            switch (canvas.renderMode) {
-                case RenderMode.ScreenSpaceOverlay:
-                    break;
-                case RenderMode.ScreenSpaceCamera:
-                case RenderMode.WorldSpace:
-                    var camera = canvas.worldCamera;
-                    if (camera == null) {
-                        UniWebViewLogger.Instance.Critical(@"You need a render camera 
+        var canvas = referenceRectTransform.GetComponentInParent<Canvas>();
+        if (canvas == null) {
+            return frame;
+        }
+
+        switch (canvas.renderMode) {
+            case RenderMode.ScreenSpaceOverlay:
+                break;
+            case RenderMode.ScreenSpaceCamera:
+            case RenderMode.WorldSpace:
+                var camera = canvas.worldCamera;
+                if (camera == null) {
+                    UniWebViewLogger.Instance.Critical(@"You need a render camera 
                         or event camera to use RectTransform to determine correct 
                         frame for UniWebView.");
-                        UniWebViewLogger.Instance.Info("No camera found. Fall back to ScreenSpaceOverlay mode.");
-                    } else {
-                        bottomLeft = camera.WorldToScreenPoint(bottomLeft);
-                        topLeft = camera.WorldToScreenPoint(topLeft);
-                        topRight = camera.WorldToScreenPoint(topRight);
-                        bottomRight = camera.WorldToScreenPoint(bottomRight);
-                    }
-                    break;
-            }
-
-            float widthFactor = (float)UniWebViewInterface.NativeScreenWidth() / (float)Screen.width;
-            float heightFactor = (float)UniWebViewInterface.NativeScreenHeight() / (float)Screen.height;
-
-            float x = topLeft.x * widthFactor;
-            float y = (Screen.height - topLeft.y) * heightFactor;
-            float width = (bottomRight.x - topLeft.x) * widthFactor;
-            float height = (topLeft.y - bottomRight.y) * heightFactor;
-            return new Rect(x, y, width, height);
+                    UniWebViewLogger.Instance.Info("No camera found. Fall back to ScreenSpaceOverlay mode.");
+                } else {
+                    // bottomLeft = camera.WorldToScreenPoint(bottomLeft);
+                    topLeft = camera.WorldToScreenPoint(topLeft);
+                    // topRight = camera.WorldToScreenPoint(topRight);
+                    bottomRight = camera.WorldToScreenPoint(bottomRight);
+                }
+                break;
+            default:
+                throw new ArgumentOutOfRangeException();
         }
+
+        var widthFactor = UniWebViewInterface.NativeScreenWidth() / Screen.width;
+        var heightFactor = UniWebViewInterface.NativeScreenHeight() / Screen.height;
+
+        var x = topLeft.x * widthFactor;
+        var y = (Screen.height - topLeft.y) * heightFactor;
+        var width = (bottomRight.x - topLeft.x) * widthFactor;
+        var height = (topLeft.y - bottomRight.y) * heightFactor;
+        return new Rect(x, y, width, height);
     }
 
     void Awake() {
@@ -411,12 +414,7 @@ public class UniWebView: MonoBehaviour {
 
         EmbeddedToolbar = new UniWebViewEmbeddedToolbar(listener);
 
-        Rect rect;
-        if (fullScreen) {
-            rect = new Rect(0, 0, Screen.width, Screen.height);
-        } else {
-            rect = NextFrameRect();
-        }
+        var rect = fullScreen ? new Rect(0, 0, Screen.width, Screen.height) : NextFrameRect();
 
         UniWebViewInterface.Init(listener.Name, (int)rect.x, (int)rect. y, (int)rect.width, (int)rect.height);
         currentOrientation = Screen.orientation;
@@ -519,6 +517,24 @@ public class UniWebView: MonoBehaviour {
     }
 
     /// <summary>
+    /// Sets whether this web view instance should try to restore its view hierarchy when resumed.
+    ///
+    /// In some versions of Unity when running on Android, the player view is brought to front when switching back
+    /// from a pause state, which causes the web view is invisible when the app is resumed. It requires an additional
+    /// step to bring the web view to front to make the web view visible. Set this to true to apply this workaround.
+    ///
+    /// Issue caused by:
+    /// https://issuetracker.unity3d.com/issues/android-a-black-screen-appears-for-a-few-seconds-when-returning-to-the-game-from-the-lock-screen-after-idle-time
+    ///
+    /// This issue is known in these released versions:
+    /// - Unity 2021.3.31, 2021.3.32, 2021.3.31, 2021.3.34
+    /// - Unity 2022.3.10, 2022.3.11, 2022.3.12, 2022.3.13, 2022.3.14, 2022.3.15
+    ///
+    /// If you are using UniWebView in these versions, you may want to set this value to `true`.
+    /// </summary>
+    public bool RestoreViewHierarchyOnResume { get; set; }
+
+    /// <summary>
     /// Loads a url in current web view.
     /// </summary>
     /// <param name="url">The url to be loaded. This url should start with `http://` or `https://` scheme. You could even load a non-ascii url text if it is valid.</param>
@@ -564,20 +580,12 @@ public class UniWebView: MonoBehaviour {
     /// <summary>
     /// Gets whether there is a back page in the back-forward list that can be navigated to.
     /// </summary>
-    public bool CanGoBack {
-        get {
-            return UniWebViewInterface.CanGoBack(listener.Name);
-        }
-    }
+    public bool CanGoBack => UniWebViewInterface.CanGoBack(listener.Name);
 
     /// <summary>
     /// Gets whether there is a forward page in the back-forward list that can be navigated to.
     /// </summary>
-    public bool CanGoForward {
-        get {
-            return UniWebViewInterface.CanGoForward(listener.Name);
-        }
-    }
+    public bool CanGoForward => UniWebViewInterface.CanGoForward(listener.Name);
 
     /// <summary>
     /// Navigates to the back item in the back-forward list.
@@ -1050,14 +1058,48 @@ public class UniWebView: MonoBehaviour {
     /// Clears all cookies from web view.
     /// 
     /// This will clear cookies from all domains in the web view and previous.
-    /// If you only need to remove cookies from a certain domain, use `SetCookie` instead.
+    /// If you only need to remove cookies from a certain domain, use `RemoveCookies` instead.
+    ///
+    /// Deprecated. Use the async version `ClearCookies(Action)` with action instead.
     /// </summary>
+    [Obsolete("Use the async version `ClearCookies(Action)` instead.")]
     public static void ClearCookies() {
         UniWebViewInterface.ClearCookies();
     }
 
     /// <summary>
+    /// Clears all cookies from web view. When it finishes, the `handler` will be called.
+    /// 
+    /// This will clear cookies from all domains in the web view and previous.
+    /// If you only need to remove cookies from a certain domain, use `RemoveCookies` instead.
+    /// </summary>
+    /// <param name="handler">An action that is called after the operation finishes.</param>
+    public static void ClearCookies(Action handler) {
+        var identifier = Guid.NewGuid().ToString();
+        globalPayloadActions.Add(identifier, (payload) => {
+            handler.Invoke();
+        });
+        UniWebViewInterface.ClearCookies(identifier);
+    }
+    
+    /// <summary>
+    /// Clears all cookies from web view asynchronously.
+    ///
+    /// This will clear cookies from all domains in the web view and previous.
+    /// If you only need to remove cookies from a certain domain, use `RemoveCookies` instead.
+    /// </summary>
+    public static async Task ClearCookiesAsync() {
+        var tcs = new TaskCompletionSource<object>();
+        ClearCookies(() => {
+            tcs.SetResult(null);
+        });
+        await tcs.Task;
+    }
+
+    /// <summary>
     /// Sets a cookie for a certain url.
+    ///
+    /// Deprecated. Use the async version `SetCookie(String,String,Action)` with action instead.
     /// </summary>
     /// <param name="url">The url to which cookie will be set.</param>
     /// <param name="cookie">The cookie string to set.</param>
@@ -1065,12 +1107,60 @@ public class UniWebView: MonoBehaviour {
     /// Whether UniWebView should skip encoding the url or not. If set to `false`, UniWebView will try to encode the url parameter before
     /// using it. Otherwise, your original url string will be used to set the cookie if it is valid. Default is `false`.
     /// </param>
+    [Obsolete("Use the async version `SetCookie(String,String,Action)` instead.")]
     public static void SetCookie(string url, string cookie, bool skipEncoding = false) {
         UniWebViewInterface.SetCookie(url, cookie, skipEncoding);
     }
 
     /// <summary>
-    /// Gets the cookie value under a url and key.
+    /// Sets a cookie for a certain url. When it finishes, the `handler` will be called.
+    /// </summary>
+    /// <param name="url">The url to which cookie will be set.</param>
+    /// <param name="cookie">The cookie string to set.</param>
+    /// <param name="handler">An action that is called after the operation finishes.</param>
+    public static void SetCookie(string url, string cookie, Action handler) {
+        SetCookie(url, cookie, false, handler);
+    }
+    
+    /// <summary>
+    /// Sets a cookie for a certain url. When it finishes, the `handler` will be called.
+    /// </summary>
+    /// <param name="url">The url to which cookie will be set.</param>
+    /// <param name="cookie">The cookie string to set.</param>
+    /// <param name="skipEncoding">
+    /// Whether UniWebView should skip encoding the url or not. If set to `false`, UniWebView will try to encode the url parameter before
+    /// using it. Otherwise, your original url string will be used to set the cookie if it is valid.
+    /// </param>
+    /// <param name="handler">An action that is called after the operation finishes.</param>
+    public static void SetCookie(string url, string cookie, bool skipEncoding, Action handler) {
+        var identifier = Guid.NewGuid().ToString();
+        globalPayloadActions.Add(identifier, (payload) => {
+            handler.Invoke();
+        });
+        UniWebViewInterface.SetCookie(url, cookie, skipEncoding, identifier);
+    }
+
+    /// <summary>
+    /// Sets a cookie for a certain url asynchronously.
+    /// </summary>
+    /// <param name="url">The url to which cookie will be set.</param>
+    /// <param name="cookie">The cookie string to set.</param>
+    /// <param name="skipEncoding">
+    /// Whether UniWebView should skip encoding the url or not. If set to `false`, UniWebView will try to encode the url parameter before
+    /// using it. Otherwise, your original url string will be used to set the cookie if it is valid. Default is `false`.
+    /// </param>
+    public static async Task SetCookieAsync(string url, string cookie, bool skipEncoding = false) {
+        var tcs = new TaskCompletionSource<object>();
+        SetCookie(url, cookie, skipEncoding, () => {
+            tcs.SetResult(null);
+        });
+        await tcs.Task;
+    }
+    
+    /// <summary>
+    /// Gets the cookie value under a given url and key.
+    ///
+    /// Deprecated. Use the async version `GetCookie(String,String,Action)` with action instead.
     /// </summary>
     /// <param name="url">The url (domain) where the target cookie is.</param>
     /// <param name="key">The key for target cookie value.</param>
@@ -1079,24 +1169,135 @@ public class UniWebView: MonoBehaviour {
     /// using it. Otherwise, your original url string will be used to get the cookie if it is valid. Default is `false`.
     /// </param>
     /// <returns>Value of the target cookie under url.</returns>
+    [Obsolete("Use the async version `GetCookie(String,String,Action)` instead.")]
     public static string GetCookie(string url, string key, bool skipEncoding = false) {
         return UniWebViewInterface.GetCookie(url, key, skipEncoding);
     }
-
+    
     /// <summary>
-    /// Removes all the cookies under a url.
+    /// Gets the cookie value under a url and key. When it finishes, the `handler` will be called with the cookie value
+    /// if exists.
     /// </summary>
-    /// <param name="url">The url (domain) where the cookies is under.</param>
+    /// <param name="url">The url (domain) where the target cookie is.</param>
+    /// <param name="key">The key for target cookie value.</param>
+    /// <param name="handler">An action that is called after the operation finishes.</param>
+    public static void GetCookie(string url, string key, Action<string> handler) {
+        GetCookie(url, key, false, handler);
+    }
+    
+    /// <summary>
+    /// Gets the cookie value under a given url and key. When it finishes, the `handler` will be called with the cookie value
+    /// if exists.
+    /// </summary>
+    /// <param name="url">The url (domain) where the target cookie is.</param>
+    /// <param name="key">The key for target cookie value.</param>
+    /// <param name="skipEncoding">
+    /// Whether UniWebView should skip encoding the url or not. If set to `false`, UniWebView will try to encode the url parameter before
+    /// using it. Otherwise, your original url string will be used to get the cookie if it is valid.
+    /// </param>
+    /// <param name="handler">An action that is called after the operation finishes.</param>
+    public static void GetCookie(string url, string key, bool skipEncoding, Action<string> handler) {
+        var identifier = Guid.NewGuid().ToString();
+        globalPayloadActions.Add(identifier, (payload) => {
+            handler.Invoke(payload.data);
+        });
+        UniWebViewInterface.GetCookie(url, key, skipEncoding, identifier);
+    }
+    
+    /// <summary>
+    /// Gets the cookie value under a given url and key asynchronously.
+    ///
+    /// </summary>
+    /// <param name="url">The url (domain) where the target cookie is.</param>
+    /// <param name="key">The key for target cookie value.</param>
     /// <param name="skipEncoding">
     /// Whether UniWebView should skip encoding the url or not. If set to `false`, UniWebView will try to encode the url parameter before
     /// using it. Otherwise, your original url string will be used to get the cookie if it is valid. Default is `false`.
     /// </param>
+    public static async Task<string> GetCookieAsync(string host, string cookieName, bool skipEncoding = false) {
+        var tcs = new TaskCompletionSource<string>();
+        GetCookie(host, cookieName, skipEncoding, (result) =>  {
+            tcs.SetResult(result);
+        });
+        return await tcs.Task;
+    }
+
+    /// <summary>
+    /// Removes all the cookies under a given url.
+    /// </summary>
+    /// <param name="url">The url (domain) where the cookies are under.</param>
+    /// <param name="skipEncoding">
+    /// Whether UniWebView should skip encoding the url or not. If set to `false`, UniWebView will try to encode the url parameter before
+    /// using it. Otherwise, your original url string will be used to get the cookie if it is valid. Default is `false`.
+    /// </param>
+    [Obsolete("Use the async version `RemoveCookies(String,Action)` instead.")]
     public static void RemoveCookies(string url, bool skipEncoding = false) {
         UniWebViewInterface.RemoveCookies(url, skipEncoding);
     }
     
     /// <summary>
-    /// Removes the certain cookie under a url for the specified key.
+    /// Removes all the cookies under a given url. When it finishes, the `handler` will be called.
+    /// </summary>
+    /// <param name="url">The url (domain) where the cookies are under.</param>
+    /// <param name="handler">An action that is called after the operation finishes.</param>
+    public static void RemoveCookies(string url, Action handler) {
+        RemoveCookies(url, false, handler);
+    }
+    
+    /// <summary>
+    /// Removes all the cookies under a given url. When it finishes, the `handler` will be called.
+    /// </summary>
+    /// <param name="url">The url (domain) where the cookies are under.</param>
+    /// <param name="handler">An action that is called after the operation finishes.</param>
+    /// <param name="skipEncoding">
+    /// Whether UniWebView should skip encoding the url or not. If set to `false`, UniWebView will try to encode the url parameter before
+    /// using it. Otherwise, your original url string will be used to get the cookie if it is valid.
+    /// </param>
+    public static void RemoveCookies(string url, bool skipEncoding, Action handler) {
+        var identifier = Guid.NewGuid().ToString();
+        globalPayloadActions.Add(identifier, (payload) => {
+            handler.Invoke();
+        });
+        UniWebViewInterface.RemoveCookies(url, skipEncoding, identifier);
+    }
+    
+    /// <summary>
+    /// Removes all the cookies under a given url asynchronously.
+    /// </summary>
+    /// <param name="url">The url (domain) where the cookies are under.</param>
+    /// <param name="handler">An action that is called after the operation finishes.</param>
+    /// <param name="skipEncoding">
+    /// Whether UniWebView should skip encoding the url or not. If set to `false`, UniWebView will try to encode the url parameter before
+    /// using it. Otherwise, your original url string will be used to get the cookie if it is valid. Default is `false`.
+    /// </param>
+    public static async Task RemoveCookiesAsync(string url, bool skipEncoding = false) {
+        var tcs = new TaskCompletionSource<object>();
+        RemoveCookies(url, skipEncoding, () => {
+            tcs.SetResult(null);
+        });
+        await tcs.Task;
+    }
+    
+    /// <summary>
+    /// Removes a certain cookie under the given url for the specified key.
+    ///
+    /// Deprecated. Use the async version `RemoveCookie(String,String,Action)` with action instead.
+    /// </summary>
+    /// <param name="url">The url (domain) where the cookies are under.</param>
+    /// <param name="key">The key for target cookie.</param>
+    /// <param name="skipEncoding">
+    /// Whether UniWebView should skip encoding the url or not. If set to `false`, UniWebView will try to encode the url parameter before
+    /// using it. Otherwise, your original url string will be used to get the cookie if it is valid. Default is `false`.
+    /// </param>
+    [Obsolete("Use the async version `RemoveCookie(String,String,Action)` instead.")]
+    public static void RemoveCooke(string url, string key, bool skipEncoding = false) {
+        RemoveCookie(url, key, skipEncoding);
+    }
+    
+    /// <summary>
+    /// Removes a certain cookie under the given url for the specified key.
+    ///
+    /// Deprecated. Use the async version `RemoveCookie(String,String,Action)` with action instead.
     /// </summary>
     /// <param name="url">The url (domain) where the cookies is under.</param>
     /// <param name="key">The key for target cookie.</param>
@@ -1104,8 +1305,54 @@ public class UniWebView: MonoBehaviour {
     /// Whether UniWebView should skip encoding the url or not. If set to `false`, UniWebView will try to encode the url parameter before
     /// using it. Otherwise, your original url string will be used to get the cookie if it is valid. Default is `false`.
     /// </param>
-    public static void RemoveCooke(string url, string key, bool skipEncoding = false) {
+    [Obsolete("Use the async version `RemoveCookie(String,String,Action)` instead.")]
+    public static void RemoveCookie(string url, string key, bool skipEncoding = false) {
         UniWebViewInterface.RemoveCookie(url, key, skipEncoding);
+    }
+    
+    /// <summary>
+    /// Removes a certain cookie under the given url for the specified key. When it finishes, the `handler` will be called.
+    /// </summary>
+    /// <param name="url">The url (domain) where the cookies are under.</param>
+    /// <param name="key">The key for target cookie.</param>
+    /// <param name="handler">An action that is called after the operation finishes.</param>
+    public static void RemoveCookie(string url, string key, Action handler) {
+        RemoveCookie(url, key, false, handler);
+    }
+    
+    /// <summary>
+    /// Removes a certain cookie under the given url for the specified key. When it finishes, the `handler` will be called.
+    /// </summary>
+    /// <param name="url">The url (domain) where the cookies are under.</param>
+    /// <param name="key">The key for target cookie.</param>
+    /// <param name="skipEncoding">
+    /// Whether UniWebView should skip encoding the url or not. If set to `false`, UniWebView will try to encode the url parameter before
+    /// using it. Otherwise, your original url string will be used to get the cookie if it is valid.
+    /// </param>
+    /// <param name="handler">An action that is called after the operation finishes.</param>
+    public static void RemoveCookie(string url, string key, bool skipEncoding, Action handler) {
+        var identifier = Guid.NewGuid().ToString();
+        globalPayloadActions.Add(identifier, (payload) => {
+            handler.Invoke();
+        });
+        UniWebViewInterface.RemoveCookie(url, key, skipEncoding, identifier);
+    }
+    
+    /// <summary>
+    /// Removes a certain cookie under the given url for the specified key. asynchronously 
+    /// </summary>
+    /// <param name="url">The url (domain) where the cookies are under.</param>
+    /// <param name="key">The key for target cookie.</param>
+    /// <param name="skipEncoding">
+    /// Whether UniWebView should skip encoding the url or not. If set to `false`, UniWebView will try to encode the url parameter before
+    /// using it. Otherwise, your original url string will be used to get the cookie if it is valid. Default is `false`.
+    /// </param>
+    public static async Task RemoveCookieAsync(string url, string key, bool skipEncoding = false) {
+        var tcs = new TaskCompletionSource<object>();
+        RemoveCookie(url, key, skipEncoding, () => {
+            tcs.SetResult(null);
+        });
+        await tcs.Task;
     }
 
     /// <summary>
@@ -1134,9 +1381,7 @@ public class UniWebView: MonoBehaviour {
     /// Gets or sets the background color of web view. The default value is `Color.white`.
     /// </summary>
     public Color BackgroundColor {
-        get {
-            return backgroundColor;
-        }
+        get => backgroundColor;
         set {
             backgroundColor = value;
             UniWebViewInterface.SetBackgroundColor(listener.Name, value.r, value.g, value.b, value.a);
@@ -1151,12 +1396,8 @@ public class UniWebView: MonoBehaviour {
     /// Default is `1.0f`, which means totally opaque. Set it to `0.0f` will make the web view totally transparent.
     /// </summary>
     public float Alpha {
-        get {
-            return UniWebViewInterface.GetWebViewAlpha(listener.Name);
-        }
-        set {
-            UniWebViewInterface.SetWebViewAlpha(listener.Name, value);
-         }
+        get => UniWebViewInterface.GetWebViewAlpha(listener.Name);
+        set => UniWebViewInterface.SetWebViewAlpha(listener.Name, value);
     }
 
     /// <summary>
@@ -1250,11 +1491,18 @@ public class UniWebView: MonoBehaviour {
     /// <summary>
     /// Adds a trusted domain to white list and allow permission requests from the domain.
     /// 
-    /// You only need this on Android devices with system before 6.0 when a site needs the location or camera 
-    /// permission. It will allow the permission gets approved so you could access the corresponding devices.
-    /// From Android 6.0, the permission requests method is changed and this is not needed anymore.
+    /// You need this on Android devices when a site needs the location or camera  permission. It will allow the
+    /// permission gets approved so you could access the corresponding devices.
+    ///
+    /// Deprecated. Use `RegisterOnRequestMediaCapturePermission` instead, which works for both Android and iOS and
+    /// provides a more flexible way to handle the permission requests. By default, if neither this method and
+    /// `RegisterOnRequestMediaCapturePermission` is called, the permission request will trigger a grant alert to ask
+    /// the user to decide whether to allow or deny the permission.
+    ///  
     /// </summary>
     /// <param name="domain">The domain to add to the white list.</param>
+    [Obsolete("Deprecated. Use `RegisterOnRequestMediaCapturePermission` instead. Check " + 
+              "https://docs.uniwebview.com/api/#registeronrequestmediacapturepermission", false)]
     public void AddPermissionTrustDomain(string domain) {
         #if UNITY_ANDROID && !UNITY_EDITOR
         UniWebViewInterface.AddPermissionTrustDomain(listener.Name, domain);
@@ -1265,6 +1513,7 @@ public class UniWebView: MonoBehaviour {
     /// Removes a trusted domain from white list.
     /// </summary>
     /// <param name="domain">The domain to remove from white list.</param>
+    [Obsolete("Deprecated. Use `UnregisterOnRequestMediaCapturePermission` instead.", false)]
     public void RemovePermissionTrustDomain(string domain) {
         #if UNITY_ANDROID && !UNITY_EDITOR
         UniWebViewInterface.RemovePermissionTrustDomain(listener.Name, domain);
@@ -1275,7 +1524,7 @@ public class UniWebView: MonoBehaviour {
     /// Sets whether the device back button should be enabled to execute "go back" or "closing" operation.
     /// 
     /// On Android, the device back button in navigation bar will navigate users to a back page. If there is 
-    /// no any back page avaliable, the back button clicking will try to raise a `OnShouldClose` event and try 
+    /// no any back page available, the back button clicking will try to raise a `OnShouldClose` event and try 
     /// to close the web view if `true` is return from the event. If the `OnShouldClose` is not listened, 
     /// the web view will be closed and the UniWebView component will be destroyed to release using resource.
     /// 
@@ -1972,6 +2221,65 @@ public class UniWebView: MonoBehaviour {
             UniWebViewChannelMethod.ShouldUniWebViewHandleRequest
         );
     }
+
+    /// <summary>
+    /// Registers a method handler for deciding whether UniWebView should allow a media request from the web page or
+    /// not.
+    ///
+    /// The handler is called when the web view receives a request to capture media, such as camera or microphone. It
+    /// usually happens when the web view is trying to access the camera or microphone by using the "getUserMedia" APIs
+    /// in WebRTC. You can check the request properties in the input `UniWebViewChannelMethodMediaCapturePermission`
+    /// instance, which contains information like the media type, the request origin (protocol and host), then decide
+    /// whether this media request should be allowed or not.
+    ///
+    /// According to the `UniWebViewMediaCapturePermissionDecision` value you return from the handler function,
+    /// UniWebView behaves differently:
+    ///  
+    /// - `Grant`: UniWebView allows the access without asking the user.
+    /// - `Deny`: UniWebView forbids the access and the web page will receive an error.
+    /// - `Prompt`: UniWebView asks the user for permission. The web page will receive a prompt to ask the user if they
+    /// allow the access to the requested media resources (camera or/and microphone).
+    ///
+    /// If this method is never called or the handler is unregistered, UniWebView will prompt the user for the
+    /// permission.
+    ///
+    /// On iOS, this method is available from iOS 15.0 or later. On earlier version of iOS, the handler will be ignored
+    /// and the web view will always prompt the user for the permission.
+    /// 
+    /// </summary>
+    /// <param name="handler">
+    /// A handler you can implement your own logic to decide whether UniWebView should allow, deny or prompt the media
+    /// resource access request.
+    ///
+    /// You need to return a `UniWebViewMediaCapturePermissionDecision` value to indicate the decision as soon as
+    /// possible.
+    /// </param>
+    public void RegisterOnRequestMediaCapturePermission(
+        Func<
+            UniWebViewChannelMethodMediaCapturePermission, 
+            UniWebViewMediaCapturePermissionDecision
+        > handler
+        )
+    {
+        object Func(object obj) => handler((UniWebViewChannelMethodMediaCapturePermission)obj);
+        UniWebViewChannelMethodManager.Instance.RegisterChannelMethod(
+            listener.Name, 
+            UniWebViewChannelMethod.RequestMediaCapturePermission,
+            Func
+        );
+    }
+    
+    /// <summary>
+    /// Unregisters the method handler for handling media capture permission request.
+    ///
+    /// This clears the handler registered by `RegisterOnRequestMediaCapturePermission` method.
+    /// </summary>
+    public void UnregisterOnRequestMediaCapturePermission() {
+        UniWebViewChannelMethodManager.Instance.UnregisterChannelMethod(
+            listener.Name, 
+            UniWebViewChannelMethod.RequestMediaCapturePermission
+        );
+    }
     
     void OnDestroy() {
         UniWebViewNativeListener.RemoveListener(listener.Name);
@@ -1988,7 +2296,7 @@ public class UniWebView: MonoBehaviour {
     // 
     // Ref: UWV-1061
     void OnApplicationPause(bool pauseStatus) {
-        if (!pauseStatus) {
+        if (RestoreViewHierarchyOnResume && !pauseStatus) {
             UniWebViewInterface.BringContentToFront(listener.Name);
         }
     }
@@ -2135,11 +2443,20 @@ public class UniWebView: MonoBehaviour {
     }
     
     internal void InternalOnSnapshotRenderingStarted(string identifier) {
-        Action action;
-        if (actions.TryGetValue(identifier, out action)) {
-            action();
-            actions.Remove(identifier);
+        if (!actions.TryGetValue(identifier, out var action)) {
+            return;
         }
+        action();
+        actions.Remove(identifier);
+    }
+
+    internal static void InternalCookieOperation(UniWebViewNativeResultPayload payload) {
+        var identifier = payload.identifier;
+        if (!globalPayloadActions.TryGetValue(identifier, out var action)) {
+            return;
+        }
+        action(payload);
+        globalPayloadActions.Remove(identifier);
     }
 
     /// <summary>
@@ -2168,7 +2485,7 @@ public class UniWebView: MonoBehaviour {
     /// Raised when a key (like back button or volume up) on the device is pressed.
     /// 
     /// This event only raised on Android. It is useful when you disabled the back button but still need to 
-    /// get the back button event. On iOS, user's key action is not avaliable and this event will never be 
+    /// get the back button event. On iOS, user's key action is not available and this event will never be 
     /// raised.
     /// </summary>
     [Obsolete("OnKeyCodeReceived is deprecated and never called. Now UniWebView never intercepts device key code events. Check `Input.GetKeyUp` instead.", false)]

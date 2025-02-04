@@ -1,5 +1,94 @@
 # Release Note
 
+### 5.12.0 (1 Dec, 2024)
+
+#### Add
+
+* Add action based methods to cookie operations. Now you can use the async version of these methods to manipulate cookies: `GetCookie`, `SetCookie`, `RemoveCookie`, `RemoveCookies`, `CleanCookies`. The sync version of these methods are deprecated due to it is not safe in some cases and may cause crash on new iOS versions.
+* A query item for `CustomTabsService` in AndroidManifest in the package. Now it is not required to add the query in app level manifest file anymore. 
+
+#### Fix
+
+* Some internal improvements of removing deprecated methods and variables.
+
+### 5.11.4 (15 Nov, 2024)
+
+#### Fix
+
+* An issue that some URL might be incorrectly handled when the universal link is used during the OAuth 2.0 flow.
+* Some internal improvements on project patcher when exporting the iOS and Android projects.
+
+### 5.11.3 (2 Nov, 2024)
+
+#### Fix
+
+* Use the default browser on Android as the first priority for Safe Browsing Mode. Previously, it may use another browser based on the user's setting in some cases.
+
+### 5.11.2 (21 Sep, 2024)
+
+#### Fix
+
+* An issue that the URL with a custom scheme cannot be opened when the game is built against Xcode 16 and running on iOS 18.
+
+### 5.11.1 (12 Sep, 2024)
+
+#### Fix
+
+* A build issue when running under Unity Editor on Windows when the target is not iOS. It was introduced by 5.11.0.
+
+### 5.11.0 (10 Sep, 2024)
+
+#### Add
+
+* Support setting an HTTPS link (universal link for iOS or app link for Android) as the callback URL of an OAuth 2.0 flow. (Before, only the custom scheme was supported)
+* iOS 18 & Xcode 16 build support.
+
+### 5.10.2 (3 Aug, 2024)
+
+#### Fix
+
+* Fix a potential freeze of the game when calling cookie related methods on iOS in some Unity versions.
+
+### 5.10.1 (21 Jun, 2024)
+
+#### Fix
+
+* Fixed a bug where certain comment lines were unexpectedly removed while patching Gradle files.
+* Resolved an issue where the `OnLoadingErrorReceived` event (along with the deprecated `OnPageErrorReceived` event) was triggered twice during a loading error on certain Android versions.
+
+### 5.10.0 (9 Jun, 2024)
+
+#### Add
+
+* A `RestoreViewHierarchyOnResume` property to make the web view restore its view hierarchy when the app resumes from background on Android. This is an issue in these Unity versions: from Unity 2021.3.31 to 2021.3.34, from Unity 2022.3.10 to 2022.3.15. If you are using UniWebView in these versions, you need to set this value to `true` after upgrading.
+
+#### Fix
+
+* Some internal improvements.
+
+### 5.9.2 (10 Apr, 2024)
+
+#### Fix
+
+* An issue that missing the x86_64 slice for UniWebView on macOS. Now the macOS version can run on Unity editor under x86_64 mode again.
+
+### 5.9.1 (20 Mar, 2024)
+
+#### Fix
+
+* A compiling error of Android build system under Unity 2023.2.13 or later. This was due to Unity removed the related APIs in the new version. Now UniWebView reverts to use the old way (the same before UniWebView 5.8.0) to patch the Android project files.
+
+### 5.9.0 (28 Feb, 2024)
+
+#### Add
+
+* Now the WebRTC support on Android does not require adding trust domain by code. A prompt window will be shown to the user if the web page tries to access the camera or microphone.
+* Now it is possible to customize the permission request handler for WebRTC, such as grant the access request without prompt to the user. Check `RegisterOnRequestMediaCapturePermission` for more information.
+
+#### Deprecate
+
+* As `RegisterOnRequestMediaCapturePermission` is introduced, the current `AddPermissionTrustDomain` method is deprecated. Use the new method if you need to grant the permission by code.
+
 ### 5.8.0 (28 Jan, 2024)
 
 #### Add
