@@ -12,6 +12,8 @@ public class ShopManager : MonoBehaviour
     public GameObject buyButton2;
     public GameObject buyButton3;
     public GameObject buyButton4;
+
+    public GameObject notenoughg;
     private void OnEnable()
     {
         CheckBuy();
@@ -37,6 +39,10 @@ public class ShopManager : MonoBehaviour
         UIManager.instance.ShowMoney(PlayerPrefs.GetInt("Money").ToString());
         //Checkerss.instance.CheckBuy();
     }
+    public void notenough()
+    {
+        notenoughg.SetActive(true);
+    }
     public void Buy1()
     {
         if (PlayerPrefs.GetInt("Money") >= cost1)
@@ -46,6 +52,8 @@ public class ShopManager : MonoBehaviour
             PlayerPrefs.Save();
             CheckBuy();
         }
+        else
+            notenough();
     }
     public void Buy2()
     {
@@ -56,6 +64,8 @@ public class ShopManager : MonoBehaviour
             PlayerPrefs.Save();
             CheckBuy();
         }
+        else
+            notenough();
     }
     public void Buy3()
     {
@@ -66,6 +76,8 @@ public class ShopManager : MonoBehaviour
             PlayerPrefs.Save();
             CheckBuy();
         }
+        else
+            notenough();
     }
     public void Buy4()
     {
@@ -76,5 +88,7 @@ public class ShopManager : MonoBehaviour
             PlayerPrefs.Save();
             CheckBuy();
         }
+        else
+            notenough();
     }
 }
