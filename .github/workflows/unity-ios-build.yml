@@ -1,62 +1,187 @@
-name: Unity Build for iOS and OneSignal Setup
+name: Build and Upload iOS to App Store
 
-on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
+on: [push, pull_request]
 
 jobs:
-  build:
-    runs-on: macos-latest  # Так как сборка под iOS возможна только на macOS
-
+  build-ios:
+    name: Build iOS Project
+    runs-on: macos-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-
-      - name: Setup Unity
-        uses: game-ci/unity-action@v2
+      - name: Checkout Repository
+        uses: actions/checkout@v4
         with:
-          version: '2021.3.11f1'  # Укажи свою версию Unity
-          targetPlatform: 'iOS'
-          unityLicense: ${{ secrets.UNITY_LICENSE }}
+          fetch-depth: 0
+          lfs: true
 
-      - name: Install dependencies (OneSignal SDK)
+      - name: Clean Git State (Prevent Dirty Branch)
         run: |
-          # Ожидаем, что OneSignal SDK добавлен через Unity Package Manager или Git
-          # Установим зависимости для первого запуска
-          echo "Installing OneSignal SDK..."
+          git reset --hard
+          git clean -fdx
+          echo "✅ Git workspace cleaned."
 
-          # Если ты используешь Unity Package Manager для установки OneSignal:
-          unity -batchmode -quit -projectPath . -executeMethod PackageManager.InstallPackage 'com.onesignal.unity'
-
-          # Или если используешь через Git:
-          # git submodule update --init --recursive
-
-      - name: Cache Unity dependencies
-        uses: actions/cache@v2
+      - name: Cache Library
+        uses: actions/cache@v3
         with:
-          path: ~/.cache/unity3d
-          key: ${{ runner.os }}-unity-${{ hashFiles('**/*.cs') }}
+          path: Library
+          key: Library-iOS-${{ github.sha }}
           restore-keys: |
-            ${{ runner.os }}-unity-
+            Library-iOS-
+            Library-
 
-      - name: Build project for iOS
+      - name: Reset Unity License
         run: |
-          unity -batchmode -quit -projectPath . -buildTarget iOS -executeMethod BuildScript.PerformBuild
+          sudo rm -rf ~/.local/share/unity3d
+          sudo rm -rf ~/.config/unity3d
+          echo "✅ Unity License Reset Complete"
 
-      - name: Export Xcode project
-        run: |
-          # Экспортируем Xcode проект (например, из Unity)
-          unity -batchmode -quit -projectPath . -executeMethod BuildScript.ExportXcode
-
-      - name: Upload Xcode Project to Artifacts
-        uses: actions/upload-artifact@v2
+      - name: Build Xcode Project from Unity
+        uses: game-ci/unity-builder@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
-          name: Xcode-Project
-          path: ./Build/iOS
-          
-      # Для деплоя или интеграции с OneSignal можно добавить сюда шаги
-      # Например, загрузка уведомлений через OneSignal API
+          targetPlatform: iOS
+          unityVersion: 2023.1.17f1
+          buildMethod: IOSBuild.BuildIos
+          buildName: Unity-iPhone
+          buildsPath: build/iOS
+          customParameters: "-logFile /dev/stdout -debugCodeOptimization"
+
+      - name: Verify Xcode Project
+        run: |
+          if [ ! -d "build/iOS/Unity-iPhone.xcodeproj" ]; then
+            echo "❌ ERROR: Xcode project not found!"
+            exit 1
+          fi
+          echo "✅ Xcode project found."
+
+      - name: Upload iOS Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: iOS-Build
+          path: build/iOS
+
+  archive-ios:
+    name: Archive Xcode Project
+    runs-on: macos-latest
+    needs: build-ios
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Download iOS Build Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: iOS-Build
+          path: build/iOS
+
+      - name: Decode and Install Provisioning Profile
+        run: |
+          echo "${{ secrets.IOS_PROVISION_PROFILE }}" | base64 --decode > Offline_Playing_cards.mobileprovision
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          mv Offline_Playing_cards.mobileprovision ~/Library/MobileDevice/Provisioning\ Profiles/
+          echo "✅ Provisioning profile installed"
+
+      - name: Decode and Install P12 Certificate
+        run: |
+          echo "🔑 Cleaning keychains..."
+          security delete-keychain build.keychain || true
+          security create-keychain -p "" build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p "" build.keychain
+          echo "🔑 Importing certificate..."
+          echo "${{ secrets.IOS_CERTIFICATE_P12_BASE64 }}" | base64 --decode > certificate.p12
+          security import certificate.p12 -k build.keychain -P "${{ secrets.IOS_CERTIFICATE_PASSWORD }}" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k "" build.keychain
+          echo "✅ Certificate installed"
+
+      - name: Set Keychain for Xcode
+        run: |
+          security list-keychains -s build.keychain
+          security default-keychain -s build.keychain
+
+      - name: Проверка сертификатов в Keychain
+        run: |
+          security find-identity -v -p codesigning
+
+      - name: Get Provisioning Profile Name
+        run: |
+          PROFILE_NAME=$(security cms -D -i ~/Library/MobileDevice/Provisioning\ Profiles/Offline_Playing_cards.mobileprovision | plutil -extract Name raw -)
+          echo "Provisioning Profile Name: $PROFILE_NAME"
+          echo "PROVISIONING_PROFILE_NAME=$PROFILE_NAME" >> $GITHUB_ENV
+
+      - name: Archive Xcode Project
+        run: |
+          cd build/iOS
+          xcodebuild -project Unity-iPhone.xcodeproj \
+                     -scheme Unity-iPhone \
+                     -sdk iphoneos \
+                     -configuration Release \
+                     -archivePath output/Unity.xcarchive \
+                     CODE_SIGN_STYLE=Manual \
+                     DEVELOPMENT_TEAM=${{ secrets.APPLE_DEVELOPER_TEAM_ID }} \
+                     PROVISIONING_PROFILE_SPECIFIER="$PROVISIONING_PROFILE_NAME" \
+                     CODE_SIGN_IDENTITY="Apple Distribution" \
+                     OTHER_CODE_SIGN_FLAGS="--deep" \
+                     -allowProvisioningUpdates \
+                     CODE_SIGNING_ALLOWED=NO \
+                     archive
+
+      - name: Create exportOptions.plist
+        run: |
+          cat > exportOptions.plist <<EOF
+          {
+              "method": "app-store",
+              "teamID": "${{ secrets.APPLE_DEVELOPER_TEAM_ID }}",
+              "provisioningProfiles": {
+                  "com.your.bundle.id": "$PROVISIONING_PROFILE_NAME"
+              },
+              "signingCertificate": "Apple Distribution"
+          }
+          EOF
+          echo "✅ exportOptions.plist created"
+
+      - name: Export .ipa
+        run: |
+          xcodebuild -exportArchive \
+                     -archivePath build/iOS/output/Unity.xcarchive \
+                     -exportPath build/iOS/output \
+                     -exportOptionsPlist exportOptions.plist
+
+      - name: Upload Archive Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: iOS-Archive
+          path: build/iOS/output/Unity.ipa
+
+  upload-ios:
+    name: Upload iOS Build to App Store
+    runs-on: macos-latest
+    needs: archive-ios
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Download iOS Archive Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: iOS-Archive
+          path: build/iOS/output
+
+      - name: Verify .ipa File
+        run: |
+          if [ ! -f "build/iOS/output/Unity.ipa" ]; then
+            echo "❌ ERROR: .ipa file not found!"
+            exit 1
+          fi
+          echo "✅ .ipa file found."
+
+      - name: Проверка App Store Connect API
+        run: |
+          echo "${APP_STORE_CONNECT_PRIVATE_KEY}" > AuthKey.p8
+          xcrun altool --list-providers --apiKey "${{ secrets.APP_STORE_CONNECT_KEY_ID }}" --apiIssuer "${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}"
+
+      - name: Upload to App Store
+        run: |
+          xcrun altool --upload-app -f "build/iOS/output/Unity.ipa" -t ios --apiKey "${{ secrets.APP_STORE_CONNECT_KEY_ID }}" --apiIssuer "${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}"
