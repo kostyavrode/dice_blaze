@@ -1,0 +1,62 @@
+name: Unity Build for iOS and OneSignal Setup
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: macos-latest  # Так как сборка под iOS возможна только на macOS
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Setup Unity
+        uses: game-ci/unity-action@v2
+        with:
+          version: '2021.3.11f1'  # Укажи свою версию Unity
+          targetPlatform: 'iOS'
+          unityLicense: ${{ secrets.UNITY_LICENSE }}
+
+      - name: Install dependencies (OneSignal SDK)
+        run: |
+          # Ожидаем, что OneSignal SDK добавлен через Unity Package Manager или Git
+          # Установим зависимости для первого запуска
+          echo "Installing OneSignal SDK..."
+
+          # Если ты используешь Unity Package Manager для установки OneSignal:
+          unity -batchmode -quit -projectPath . -executeMethod PackageManager.InstallPackage 'com.onesignal.unity'
+
+          # Или если используешь через Git:
+          # git submodule update --init --recursive
+
+      - name: Cache Unity dependencies
+        uses: actions/cache@v2
+        with:
+          path: ~/.cache/unity3d
+          key: ${{ runner.os }}-unity-${{ hashFiles('**/*.cs') }}
+          restore-keys: |
+            ${{ runner.os }}-unity-
+
+      - name: Build project for iOS
+        run: |
+          unity -batchmode -quit -projectPath . -buildTarget iOS -executeMethod BuildScript.PerformBuild
+
+      - name: Export Xcode project
+        run: |
+          # Экспортируем Xcode проект (например, из Unity)
+          unity -batchmode -quit -projectPath . -executeMethod BuildScript.ExportXcode
+
+      - name: Upload Xcode Project to Artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: Xcode-Project
+          path: ./Build/iOS
+          
+      # Для деплоя или интеграции с OneSignal можно добавить сюда шаги
+      # Например, загрузка уведомлений через OneSignal API
