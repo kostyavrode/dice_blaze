@@ -37,12 +37,11 @@ jobs:
       - name: Build Xcode Project from Unity
         uses: game-ci/unity-builder@v4
         env:
-          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
           targetPlatform: iOS
-          unityVersion: 2023.1.17f1
+          unityVersion: 2023.1.17f1  # Версия Unity
           buildMethod: IOSBuild.BuildIos
           buildName: Unity-iPhone
           buildsPath: build/iOS
@@ -96,20 +95,15 @@ jobs:
           security set-key-partition-list -S apple-tool:,apple: -s -k "" build.keychain
           echo "✅ Certificate installed"
 
-      - name: Set Keychain for Xcode
-        run: |
-          security list-keychains -s build.keychain
-          security default-keychain -s build.keychain
-
       - name: Проверка сертификатов в Keychain
         run: |
           security find-identity -v -p codesigning
 
-      - name: Get Provisioning Profile Name
+      - name: Get Provisioning Profile UUID
         run: |
-          PROFILE_NAME=$(security cms -D -i ~/Library/MobileDevice/Provisioning\ Profiles/Offline_Playing_cards.mobileprovision | plutil -extract Name raw -)
-          echo "Provisioning Profile Name: $PROFILE_NAME"
-          echo "PROVISIONING_PROFILE_NAME=$PROFILE_NAME" >> $GITHUB_ENV
+          PROFILE_UUID=$(security cms -D -i ~/Library/MobileDevice/Provisioning\ Profiles/Offline_Playing_cards.mobileprovision | plutil -extract UUID raw -)
+          echo "Provisioning Profile UUID: $PROFILE_UUID"
+          echo "PROVISIONING_PROFILE_UUID=$PROFILE_UUID" >> $GITHUB_ENV
 
       - name: Archive Xcode Project
         run: |
@@ -121,26 +115,8 @@ jobs:
                      -archivePath output/Unity.xcarchive \
                      CODE_SIGN_STYLE=Manual \
                      DEVELOPMENT_TEAM=${{ secrets.APPLE_DEVELOPER_TEAM_ID }} \
-                     PROVISIONING_PROFILE_SPECIFIER="$PROVISIONING_PROFILE_NAME" \
-                     CODE_SIGN_IDENTITY="Apple Distribution" \
-                     OTHER_CODE_SIGN_FLAGS="--deep" \
-                     -allowProvisioningUpdates \
-                     CODE_SIGNING_ALLOWED=NO \
+                     PROVISIONING_PROFILE_SPECIFIER="$PROVISIONING_PROFILE_UUID" \
                      archive
-
-      - name: Create exportOptions.plist
-        run: |
-          cat > exportOptions.plist <<EOF
-          {
-              "method": "app-store",
-              "teamID": "${{ secrets.APPLE_DEVELOPER_TEAM_ID }}",
-              "provisioningProfiles": {
-                  "com.your.bundle.id": "$PROVISIONING_PROFILE_NAME"
-              },
-              "signingCertificate": "Apple Distribution"
-          }
-          EOF
-          echo "✅ exportOptions.plist created"
 
       - name: Export .ipa
         run: |
@@ -177,11 +153,11 @@ jobs:
           fi
           echo "✅ .ipa file found."
 
-      - name: Проверка App Store Connect API
+      - name: Upload to App Store
+        env:
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          APP_STORE_CONNECT_PRIVATE_KEY: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY }}
         run: |
           echo "${APP_STORE_CONNECT_PRIVATE_KEY}" > AuthKey.p8
-          xcrun altool --list-providers --apiKey "${{ secrets.APP_STORE_CONNECT_KEY_ID }}" --apiIssuer "${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}"
-
-      - name: Upload to App Store
-        run: |
-          xcrun altool --upload-app -f "build/iOS/output/Unity.ipa" -t ios --apiKey "${{ secrets.APP_STORE_CONNECT_KEY_ID }}" --apiIssuer "${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}"
+          xcrun altool --upload-app -f "build/iOS/output/Unity.ipa" -t ios --apiKey ${APP_STORE_CONNECT_KEY_ID} --apiIssuer ${APP_STORE_CONNECT_ISSUER_ID}
